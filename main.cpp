@@ -2,6 +2,7 @@
 
 #include "canvas.h"
 #include "open_gl.h"
+#include "mouse.h"
 
 #include "src/voronoi.h"
 
@@ -11,6 +12,8 @@ const float PIXEL_SIZE = 3;
 
 Canvas canvas = Canvas(WIDTH, HEIGHT);
 OpenGL openGL = OpenGL(&canvas, PIXEL_SIZE, WINDOWED_RESIZABLE);
+Mouse mouse = Mouse(&openGL, 1, MOUSE_CURSOR_ENABLED);
+
 Voronoi voronoi = Voronoi(WIDTH, HEIGHT, 10);
 
 int main()
@@ -23,7 +26,12 @@ int main()
     while (!glfwWindowShouldClose(openGL.window)) {
         canvas.clearCanvas();
 
-        voronoi.draw(&canvas);
+        mouse.update(&openGL);
+
+        if (glfwGetMouseButton(openGL.window, GLFW_MOUSE_BUTTON_LEFT)) {
+            voronoi.setSite(mouse.xPos / PIXEL_SIZE, canvas.height - 1 - mouse.yPos / PIXEL_SIZE);
+        }
+        voronoi.draw(&canvas, mouse.xPos / PIXEL_SIZE, canvas.height - 1 -mouse.yPos / PIXEL_SIZE);
 
         openGL.update(&canvas);
     }
