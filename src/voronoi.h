@@ -1,17 +1,18 @@
 #pragma once
 
 #include "canvas.h"
+#include "site.h"
 
 class Voronoi {
-    public:
-        unsigned int width;
-        unsigned int height;
-        unsigned int siteCount;
-        int* sites;
+public:
+    unsigned int width;
+    unsigned int height;
+    unsigned int siteCount;
+    Site* sites;
 
-        Voronoi(unsigned int width, unsigned int height, int siteCount);
-        ~Voronoi();
+    Voronoi(unsigned int width, unsigned int height, int siteCount, Site* sites);
+    ~Voronoi();
 
-        void draw(Canvas* canvas, int x, int y);
-        void setSite(int x, int y);
+    void show(Canvas* canvas, int sweepLine_y);
+    void drawParabola(Canvas* canvas, int xf, int yf, int sweepLine_y);
 };
