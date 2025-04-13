@@ -58,6 +58,12 @@ void Voronoi::show(Canvas* canvas, int sweepLine_y)
         float minDist = std::numeric_limits<float>::max();
         int siteIndex = -1;
         for (int j = 0; j < D.size(); j++) {
+
+            if (j + 1 < D.size() && D[j + 1].x < x) continue;
+            // ellenőrizni kell valahogy (nem biztos hogy így) hogy amikor
+            // egy fókuszpontból két vagy több parabola származik akkor melyiket
+            // töri ketté az új site parabolája
+
             float xf = D[j].x;
             float yf = D[j].y;
             int y = yd - ((((x - xf) * (x - xf)) / (2 * (yf - yd))) + ((yf + yd) / 2));
@@ -79,6 +85,8 @@ void Voronoi::show(Canvas* canvas, int sweepLine_y)
         // if (i < 3) continue;
         // draw circles
     }
+
+
 
     if (D.empty()) {
         std::cout << "D is empty" << std::endl;
