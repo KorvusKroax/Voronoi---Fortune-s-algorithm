@@ -29,12 +29,12 @@ Site* setRandomSites(int count)
 
 int main()
 {
-    std::string seed = "1744571592";//std::to_string(time(NULL));
+    std::string seed = "1745185802";//std::to_string(time(NULL));
 
     srand(std::hash<std::string>()(seed));
     std::cout << "Seed: " << seed << std::endl;
 
-    int siteCount = 5;
+    int siteCount = 3;
     Site* sites = setRandomSites(siteCount);
     Voronoi voronoi = Voronoi(WIDTH, HEIGHT, siteCount, sites);
 
