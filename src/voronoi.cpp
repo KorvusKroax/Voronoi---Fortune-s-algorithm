@@ -5,6 +5,7 @@
 #include "voronoi.h"
 #include "circle.h"
 #include "line.h"
+#include "beachline_parabola.h"
 
 Voronoi::Voronoi(unsigned int width, unsigned int height, int siteCount, Site* sites)
 {
@@ -36,27 +37,45 @@ void Voronoi::show(Canvas* canvas, int sweepLine_y)
 
 
 
-    std::vector<Site> beachLine;
+    std::vector<BeachlineParabola> beachLine;
 
     for (int i = 0; i < this->siteCount; i++) {
         if (this->sites[i].y > sweepLine_y) break;
 
         if (beachLine.empty()) {
-            beachLine.push_back(this->sites[i]);
+            beachLine.push_back(BeachlineParabola(this->sites[i]));
             continue;
         }
 
         int index = 0;
         for (int j = 0; j < beachLine.size() - 1; j++) {
-            if (this->sites[i].x < getIntersect_x(beachLine[j].x, beachLine[j].y, beachLine[j + 1].x, beachLine[j + 1].y, sweepLine_y)) {
+            if (this->sites[i].x < getIntersect_x(beachLine[j].site.x, beachLine[j].site.y, beachLine[j + 1].site.x, beachLine[j + 1].site.y, sweepLine_y)) {
                 index = j;
                 break;
             }
         }
 
+        float dx = beachLine[index].site.x - this->sites[i].x;
+        float dy = beachLine[index].site.y - this->sites[i].y;
+        float edgeStart_y = (float(dx * dx) / (2 * dy)) + ((beachLine[index].site.y + this->sites[i].y) >> 1);
+
+        // int edgeStart_y =
+        //     (float((this->sites[i].x - beachLine[index].site.x) * (this->sites[i].x - beachLine[index].site.x)) /
+        //         (2 * (beachLine[index].site.y - this->sites[i].y))) +
+        //     ((this->sites[i].y + beachLine[index].site.y) >> 1);
+
+
+        HalfEdge* halfEdge_left = new HalfEdge(
+            this->sites[i].x, edgeStart_y, dy, -dx
+        );
+
+        HalfEdge* halfEdge_right = new HalfEdge(
+            this->sites[i].x, edgeStart_y, -dy, dx
+        );
+
         // insert the new site into the D list
         beachLine.insert(beachLine.begin() + index, beachLine[index]);
-        beachLine.insert(beachLine.begin() + index + 1, sites[i]);
+        beachLine.insert(beachLine.begin() + index + 1, BeachlineParabola(this->sites[i], halfEdge_left, halfEdge_right));
 
         // if (i < 3) continue;
         // draw circles
@@ -67,55 +86,71 @@ void Voronoi::show(Canvas* canvas, int sweepLine_y)
 
 
 
-    if (!beachLine.empty()) {
-        for (int i = 0; i < beachLine.size(); i++) {
-            std::cout << "beachLine[" << i << "] = (x" << beachLine[i].x << ", y" << beachLine[i].y << ")" << std::endl;
-        }
-        std::cout << std::endl;
-    }
+    // if (!beachLine.empty()) {
+    //     for (int i = 0; i < beachLine.size(); i++) {
+    //         std::cout << "beachLine[" << i << "] = (x" << beachLine[i].site.x << ", y" << beachLine[i].site.y << ")" << std::endl;
+    //     }
+    //     std::cout << std::endl;
+    // }
 
     if (!beachLine.empty()) {
 
         for (int i = 0; i < beachLine.size(); i++) {
-            drawParabola(canvas, beachLine[i].x, beachLine[i].y, sweepLine_y, 0, canvas->width - 1, EGA_DARK_GREY);
+            drawParabola(canvas, beachLine[i].site.x, beachLine[i].site.y, sweepLine_y, 0, canvas->width - 1, EGA_DARK_GREY);
         }
 
-        float rightX, leftX = 0;
+        float max_x, min_x = 0;
         for (int i = 0; i < beachLine.size(); i++) {
-            rightX = (i < beachLine.size() - 1) ?
-                getIntersect_x(beachLine[i].x, beachLine[i].y, beachLine[i + 1].x, beachLine[i + 1].y, sweepLine_y) :
+            max_x = (i < beachLine.size() - 1) ?
+                getIntersect_x(beachLine[i].site.x, beachLine[i].site.y, beachLine[i + 1].site.x, beachLine[i + 1].site.y, sweepLine_y) :
                 canvas->width - 1;
-            drawParabola(canvas, beachLine[i].x, beachLine[i].y, sweepLine_y, leftX, rightX, EGA_GREEN);
-            leftX = rightX;
+            drawParabola(canvas, beachLine[i].site.x, beachLine[i].site.y, sweepLine_y, min_x, max_x, EGA_GREEN);
+            min_x = max_x;
+
+            if (beachLine[i].halfEdge_left != nullptr) {
+                Line::draw(canvas,
+                    beachLine[i].halfEdge_left->x, beachLine[i].halfEdge_left->y,
+                    beachLine[i].halfEdge_left->x + beachLine[i].halfEdge_left->dir_x,
+                    beachLine[i].halfEdge_left->y + beachLine[i].halfEdge_left->dir_y, EGA_CYAN);
+                canvas->setPixel(beachLine[i].halfEdge_left->x, beachLine[i].halfEdge_left->y, EGA_WHITE);
+            }
+
+            if (beachLine[i].halfEdge_right != nullptr) {
+                Line::draw(canvas,
+                    beachLine[i].halfEdge_right->x, beachLine[i].halfEdge_right->y,
+                    beachLine[i].halfEdge_right->x + beachLine[i].halfEdge_right->dir_x,
+                    beachLine[i].halfEdge_right->y + beachLine[i].halfEdge_right->dir_y, EGA_LIGHT_BLUE);
+                canvas->setPixel(beachLine[i].halfEdge_left->x, beachLine[i].halfEdge_left->y, EGA_WHITE);
+            }
         }
 
     }
 }
 
-void Voronoi::drawParabola(Canvas* canvas, int xf, int yf, int sweepLine_y, int leftX, int rightX, Color color)
+void Voronoi::drawParabola(Canvas* canvas, int focus_x, int focus_y, int sweepLine_y, int min_x, int max_x, Color color)
 {
-    if (yf == sweepLine_y) return;
-    for (int x = leftX; x < rightX; x++) {
-        // int y = (1.0f / (2 * (yf - sweepLine_y))) * ((x - xf) * (x - xf)) + ((yf + sweepLine_y) / 2);
-        int y = (((x - xf) * (x - xf)) / (2 * (yf - sweepLine_y))) + ((yf + sweepLine_y) / 2);
+    if (focus_y == sweepLine_y) return;
+    for (int x = min_x; x < max_x; x++) {
+        // int y = (1.0f / (2 * (focus_y - sweepLine_y))) * ((x - focus_x) * (x - focus_x)) + ((focus_y + sweepLine_y) / 2);
+        int y = (float((x - focus_x) * (x - focus_x)) / (2 * (focus_y - sweepLine_y))) + ((focus_y + sweepLine_y) >> 1);
         canvas->setPixel(x, y, color);
     }
 }
 
-double Voronoi::getIntersect_x(double siteLeft_x, double siteLeft_y, double siteRight_x, double siteRight_y, double sweepLine_y)
+double Voronoi::getIntersect_x(double site_x, double site_y, double nextSite_x, double nextSite_y, double sweepLine_y)
 {
-    if (siteLeft_y == sweepLine_y) return siteLeft_x;
-    if (siteRight_y == sweepLine_y) return siteRight_x;
+    if (site_y == sweepLine_y) return site_x;
+    if (nextSite_y == sweepLine_y) return nextSite_x;
 
-    double dp = 2.0 * (siteLeft_y - sweepLine_y);
+    double dp = 2.0 * (site_y - sweepLine_y);
     double a1 = 1.0 / dp;
-    double b1 = -2.0 * siteLeft_x / dp;
-    double c1 = sweepLine_y + dp / 4.0 + (siteLeft_x * siteLeft_x) / dp;
+    double b1 = -2.0 * site_x / dp;
+    double c1 = sweepLine_y + dp / 4.0 + (site_x * site_x) / dp;
 
-           dp = 2.0 * (siteRight_y - sweepLine_y);
+           dp = 2.0 * (nextSite_y - sweepLine_y);
     double a2 = 1.0 / dp;
-    double b2 = -2.0 * siteRight_x / dp;
-    double c2 = sweepLine_y + dp / 4.0 + (siteRight_x * siteRight_x) / dp;
+    double b2 = -2.0 * nextSite_x / dp;
+    double c2 = sweepLine_y + dp / 4.0 + (nextSite_x * nextSite_x) / dp;
 
     double a = a1 - a2;
     double b = b1 - b2;
@@ -125,7 +160,7 @@ double Voronoi::getIntersect_x(double siteLeft_x, double siteLeft_y, double site
     double x1 = (-b + sqrtDiscriminant) / (2 * a);
     double x2 = (-b - sqrtDiscriminant) / (2 * a);
 
-    return siteLeft_y > siteRight_y ? std::max(x1, x2) : std::min(x1, x2);
+    return site_y > nextSite_y ? std::max(x1, x2) : std::min(x1, x2);
 }
 
 
