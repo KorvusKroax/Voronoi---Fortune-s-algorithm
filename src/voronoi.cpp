@@ -22,8 +22,6 @@ Voronoi::Voronoi(unsigned int width, unsigned int height, int siteCount, Site* s
 
 Voronoi::~Voronoi() { }
 
-
-
 void Voronoi::show(Canvas* canvas, int sweepLine_y)
 {
     // sites
@@ -49,9 +47,9 @@ void Voronoi::show(Canvas* canvas, int sweepLine_y)
         }
 
         int index = 0;
-        for (int j = 1; j < beachLine.size(); j++) {
-            if (this->sites[i].x < getIntersect_x(beachLine[j - 1].x, beachLine[j - 1].y, beachLine[j].x, beachLine[j].y, sweepLine_y)) {
-                index = j - 1;
+        for (int j = 0; j < beachLine.size() - 1; j++) {
+            if (this->sites[i].x < getIntersect_x(beachLine[j].x, beachLine[j].y, beachLine[j + 1].x, beachLine[j + 1].y, sweepLine_y)) {
+                index = j;
                 break;
             }
         }
