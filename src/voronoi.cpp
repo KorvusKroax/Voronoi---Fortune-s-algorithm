@@ -2,10 +2,12 @@
 #include <iostream>
 #include <vector>
 
-#include "voronoi.h"
 #include "circle.h"
 #include "line.h"
+
+#include "voronoi.h"
 #include "beachline_parabola.h"
+#include "halfedge.h"
 
 Voronoi::Voronoi(unsigned int width, unsigned int height, int siteCount, Site* sites)
 {
@@ -38,7 +40,6 @@ void Voronoi::show(Canvas* canvas, int sweepLine_y)
 
 
     std::vector<BeachlineParabola> beachLine;
-
     for (int i = 0; i < this->siteCount; i++) {
         if (this->sites[i].y > sweepLine_y) break;
 
@@ -55,27 +56,18 @@ void Voronoi::show(Canvas* canvas, int sweepLine_y)
             }
         }
 
+        // insert the new site into the beachLine
         float dx = beachLine[index].site.x - this->sites[i].x;
         float dy = beachLine[index].site.y - this->sites[i].y;
         float edgeStart_y = (float(dx * dx) / (2 * dy)) + ((beachLine[index].site.y + this->sites[i].y) >> 1);
 
-        // int edgeStart_y =
-        //     (float((this->sites[i].x - beachLine[index].site.x) * (this->sites[i].x - beachLine[index].site.x)) /
-        //         (2 * (beachLine[index].site.y - this->sites[i].y))) +
-        //     ((this->sites[i].y + beachLine[index].site.y) >> 1);
-
-
-        HalfEdge* halfEdge_left = new HalfEdge(
-            this->sites[i].x, edgeStart_y, dy, -dx
-        );
-
-        HalfEdge* halfEdge_right = new HalfEdge(
-            this->sites[i].x, edgeStart_y, -dy, dx
-        );
-
-        // insert the new site into the D list
         beachLine.insert(beachLine.begin() + index, beachLine[index]);
-        beachLine.insert(beachLine.begin() + index + 1, BeachlineParabola(this->sites[i], halfEdge_left, halfEdge_right));
+        beachLine.insert(beachLine.begin() + index + 1,
+            BeachlineParabola(this->sites[i],
+                new HalfEdge(this->sites[i].x, edgeStart_y, -dx / dy),
+                new HalfEdge(this->sites[i].x, edgeStart_y, dx / -dy)
+            )
+        );
 
         // if (i < 3) continue;
         // draw circles
@@ -84,46 +76,53 @@ void Voronoi::show(Canvas* canvas, int sweepLine_y)
 
 
 
+    if (beachLine.empty()) return;
 
-
-    // if (!beachLine.empty()) {
-    //     for (int i = 0; i < beachLine.size(); i++) {
-    //         std::cout << "beachLine[" << i << "] = (x" << beachLine[i].site.x << ", y" << beachLine[i].site.y << ")" << std::endl;
-    //     }
-    //     std::cout << std::endl;
+    // // info to console
+    // for (int i = 0; i < beachLine.size(); i++) {
+    //     std::cout << "beachLine[" << i << "] = (x" << beachLine[i].site.x << ", y" << beachLine[i].site.y << ")" << std::endl;
     // }
+    // std::cout << std::endl;
 
-    if (!beachLine.empty()) {
+    // full parabolas
+    for (int i = 0; i < beachLine.size(); i++) {
+        drawParabola(canvas, beachLine[i].site.x, beachLine[i].site.y, sweepLine_y, 0, canvas->width - 1, EGA_DARK_GREY);
+    }
 
-        for (int i = 0; i < beachLine.size(); i++) {
-            drawParabola(canvas, beachLine[i].site.x, beachLine[i].site.y, sweepLine_y, 0, canvas->width - 1, EGA_DARK_GREY);
+    float max_x, min_x = 0;
+    for (int i = 0; i < beachLine.size(); i++) {
+        max_x = (i < beachLine.size() - 1) ?
+            getIntersect_x(beachLine[i].site.x, beachLine[i].site.y, beachLine[i + 1].site.x, beachLine[i + 1].site.y, sweepLine_y) :
+            canvas->width - 1;
+
+        // beachline
+        drawParabola(canvas, beachLine[i].site.x, beachLine[i].site.y, sweepLine_y, min_x, max_x, EGA_GREEN);
+
+        // halfedges
+        if (beachLine[i].halfEdge_left != nullptr) {
+            float dx = min_x - beachLine[i].halfEdge_left->x;
+            Line::draw(canvas,
+                beachLine[i].halfEdge_left->x,
+                beachLine[i].halfEdge_left->y,
+                beachLine[i].halfEdge_left->x + dx,
+                beachLine[i].halfEdge_left->y + dx * beachLine[i].halfEdge_left->slope,
+                EGA_CYAN
+            );
+            canvas->setPixel(beachLine[i].halfEdge_left->x, beachLine[i].halfEdge_left->y, EGA_WHITE);
+        }
+        if (beachLine[i].halfEdge_right != nullptr) {
+            float dx = max_x - beachLine[i].halfEdge_right->x;
+            Line::draw(canvas,
+                beachLine[i].halfEdge_right->x,
+                beachLine[i].halfEdge_right->y,
+                beachLine[i].halfEdge_right->x + dx,
+                beachLine[i].halfEdge_right->y + dx * beachLine[i].halfEdge_right->slope,
+                EGA_ORANGE
+            );
+            canvas->setPixel(beachLine[i].halfEdge_right->x, beachLine[i].halfEdge_right->y, EGA_WHITE);
         }
 
-        float max_x, min_x = 0;
-        for (int i = 0; i < beachLine.size(); i++) {
-            max_x = (i < beachLine.size() - 1) ?
-                getIntersect_x(beachLine[i].site.x, beachLine[i].site.y, beachLine[i + 1].site.x, beachLine[i + 1].site.y, sweepLine_y) :
-                canvas->width - 1;
-            drawParabola(canvas, beachLine[i].site.x, beachLine[i].site.y, sweepLine_y, min_x, max_x, EGA_GREEN);
-            min_x = max_x;
-
-            if (beachLine[i].halfEdge_left != nullptr) {
-                Line::draw(canvas,
-                    beachLine[i].halfEdge_left->x, beachLine[i].halfEdge_left->y,
-                    beachLine[i].halfEdge_left->x + beachLine[i].halfEdge_left->dir_x,
-                    beachLine[i].halfEdge_left->y + beachLine[i].halfEdge_left->dir_y, EGA_CYAN);
-                canvas->setPixel(beachLine[i].halfEdge_left->x, beachLine[i].halfEdge_left->y, EGA_WHITE);
-            }
-
-            if (beachLine[i].halfEdge_right != nullptr) {
-                Line::draw(canvas,
-                    beachLine[i].halfEdge_right->x, beachLine[i].halfEdge_right->y,
-                    beachLine[i].halfEdge_right->x + beachLine[i].halfEdge_right->dir_x,
-                    beachLine[i].halfEdge_right->y + beachLine[i].halfEdge_right->dir_y, EGA_LIGHT_BLUE);
-                canvas->setPixel(beachLine[i].halfEdge_left->x, beachLine[i].halfEdge_left->y, EGA_WHITE);
-            }
-        }
-
+        min_x = max_x;
     }
 }
 

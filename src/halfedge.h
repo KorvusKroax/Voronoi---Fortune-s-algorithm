@@ -1,16 +1,14 @@
 #pragma once
 
 struct HalfEdge {
-    float x, y;
-    float dir_x, dir_y;
+    float x, y, slope;
 
     HalfEdge() { }
 
-    HalfEdge(float x, float y, float dir_x, float dir_y)
+    HalfEdge(float x, float y, float slope)
     {
         this->x = x;
         this->y = y;
-        this->dir_x = dir_x;
-        this->dir_y = dir_y;
+        this->slope = slope;
     }
 };
