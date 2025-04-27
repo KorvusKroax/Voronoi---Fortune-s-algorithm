@@ -6,8 +6,6 @@
 #include "line.h"
 
 #include "voronoi.h"
-#include "beachline_parabola.h"
-#include "halfedge.h"
 
 Voronoi::Voronoi(unsigned int width, unsigned int height, int siteCount, Site* sites)
 {
@@ -37,17 +35,21 @@ void Voronoi::show(Canvas* canvas, int sweepLine_y)
 
 
 
-
+    // std::vector<Event> events;
+    // for (int i = 0; i < this->siteCount; i++) events.push_back(SiteEvent(this->sites[i].y, BeachlineParabola(this->sites[i])))
 
     std::vector<BeachlineParabola> beachLine;
+    std::vector<CircleEvent> circleEvents;
     for (int i = 0; i < this->siteCount; i++) {
         if (this->sites[i].y > sweepLine_y) break;
 
+        // adding first parabola
         if (beachLine.empty()) {
             beachLine.push_back(BeachlineParabola(this->sites[i]));
             continue;
         }
 
+        // get the parabola's index below current site
         int index = 0;
         for (int j = 0; j < beachLine.size() - 1; j++) {
             if (this->sites[i].x < getIntersect_x(beachLine[j].site.x, beachLine[j].site.y, beachLine[j + 1].site.x, beachLine[j + 1].site.y, sweepLine_y)) {
@@ -56,25 +58,50 @@ void Voronoi::show(Canvas* canvas, int sweepLine_y)
             }
         }
 
-        // insert the new site into the beachLine
+        // insert the new parabola into the beachLine
         float dx = beachLine[index].site.x - this->sites[i].x;
         float dy = beachLine[index].site.y - this->sites[i].y;
         float edgeStart_y = (float(dx * dx) / (2 * dy)) + ((beachLine[index].site.y + this->sites[i].y) >> 1);
 
         beachLine.insert(beachLine.begin() + index, beachLine[index]);
-        beachLine.insert(beachLine.begin() + index + 1,
+        index++;
+        beachLine.insert(beachLine.begin() + index,
             BeachlineParabola(this->sites[i],
                 new HalfEdge(this->sites[i].x, edgeStart_y, -dx / dy),
                 new HalfEdge(this->sites[i].x, edgeStart_y, dx / -dy)
             )
         );
 
-        // if (i < 3) continue;
-        // draw circles
-        // ...
+        // check circumcircle to left
+        if (index - 2 >= 0) {
+            float cx, cy, cr;
+            if (getCircumcircle(
+                beachLine[index - 2].site.x, beachLine[index - 2].site.y,
+                beachLine[index - 1].site.x, beachLine[index - 1].site.y,
+                beachLine[index].site.x    , beachLine[index].site.y,
+                &cx, &cy, &cr
+            )) {
+                circleEvents.push_back(CircleEvent(cx, cy, cr));
+            }
+        }
+
+        // check circumcircle to right
+        if (index + 2 < beachLine.size()) {
+            float cx, cy, cr;
+            if (getCircumcircle(
+                beachLine[index].site.x    , beachLine[index].site.y,
+                beachLine[index + 1].site.x, beachLine[index + 1].site.y,
+                beachLine[index + 2].site.x, beachLine[index + 2].site.y,
+                &cx, &cy, &cr
+            )) {
+                circleEvents.push_back(CircleEvent(cx, cy, cr));
+            }
+        }
     }
 
 
+
+    // visualisation
 
     if (beachLine.empty()) return;
 
@@ -84,7 +111,7 @@ void Voronoi::show(Canvas* canvas, int sweepLine_y)
     // }
     // std::cout << std::endl;
 
-    // full parabolas
+    // draw all full parabolas
     for (int i = 0; i < beachLine.size(); i++) {
         drawParabola(canvas, beachLine[i].site.x, beachLine[i].site.y, sweepLine_y, 0, canvas->width - 1, EGA_DARK_GREY);
     }
@@ -95,10 +122,10 @@ void Voronoi::show(Canvas* canvas, int sweepLine_y)
             getIntersect_x(beachLine[i].site.x, beachLine[i].site.y, beachLine[i + 1].site.x, beachLine[i + 1].site.y, sweepLine_y) :
             canvas->width - 1;
 
-        // beachline
+        // draw beachline
         drawParabola(canvas, beachLine[i].site.x, beachLine[i].site.y, sweepLine_y, min_x, max_x, EGA_GREEN);
 
-        // halfedges
+        // draw parabola halfedges
         if (beachLine[i].halfEdge_left != nullptr) {
             float dx = min_x - beachLine[i].halfEdge_left->x;
             Line::draw(canvas,
@@ -123,6 +150,13 @@ void Voronoi::show(Canvas* canvas, int sweepLine_y)
         }
 
         min_x = max_x;
+    }
+
+    if (circleEvents.empty()) return;
+
+    // draw circumcircles
+    for (int i = 0; i < circleEvents.size(); i++) {
+        Circle::draw(canvas, circleEvents[i].x, circleEvents[i].y, circleEvents[i].r, EGA_MAGENTA);
     }
 }
 
@@ -162,53 +196,94 @@ double Voronoi::getIntersect_x(double site_x, double site_y, double nextSite_x, 
     return site_y > nextSite_y ? std::max(x1, x2) : std::min(x1, x2);
 }
 
+bool Voronoi::getCircumcircle(float x1, float y1, float x2, float y2, float x3, float y3, float* x, float* y, float* r)
+{
+    if ((x1 == x2 && y1 == y2) || (x2 == x3 && y2 == y3) || (x3 == x1 && y3 == y1)) return false;
+
+    float perp_12_x1 = x1;
+    float perp_12_y1 = y1;
+    float perp_12_x2 = x2;
+    float perp_12_y2 = y2;
+    setPerpendicular(&perp_12_x1, &perp_12_y1, &perp_12_x2, &perp_12_y2);
+
+    float perp_23_x1 = x2;
+    float perp_23_y1 = y2;
+    float perp_23_x2 = x3;
+    float perp_23_y2 = y3;
+    setPerpendicular(&perp_23_x1, &perp_23_y1, &perp_23_x2, &perp_23_y2);
+
+    if (!lineIntersection(perp_12_x1, perp_12_y1, perp_12_x2, perp_12_y2, perp_23_x1, perp_23_y1, perp_23_x2, perp_23_y2, x, y)) {
+        return false;
+    }
+
+    float dx = *x - x1;
+    float dy = *y - y1;
+    *r = sqrt(dx * dx + dy * dy);
+
+    return true;
+}
+
+void Voronoi::setPerpendicular(float* x1, float* y1, float* x2, float* y2)
+{
+    float dx = *x2 - *x1;
+    float dy = *y2 - *y1;
+
+    float center_x = (*x1 + *x2) / 2;
+    float center_y = (*y1 + *y2) / 2;
+
+    *x1 = center_x + dy;
+    *y1 = center_y - dx;
+    *x2 = center_x - dy;
+    *y2 = center_y + dx;
+}
+
+bool Voronoi::lineIntersection(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4, float* ix, float* iy)
+{
+    float den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+    if (den == 0) return false;
+
+    float t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den;
+    if (0 > t || t > 1) return false;
+
+    float u = ((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / -den;
+    if (0 > u || u > 1) return false;
+
+    *ix = x1 + (x2 - x1) * t;
+    *iy = y1 + (y2 - y1) * t;
+    return true;
+}
 
 
 
-// public static float GetIntersectX(Vector2 Left, Vector2 Right, float SweepLine)
+
+/*
+
+    A = x1 * (y2 − y3) − y1 * (x2 − x3) + x2 * y3 − x3 * y2
+    B = (x1*x1 + y1*y1) * (y3 − y2) + (x2*x2 + y2*y2) * (y1 − y3) + (x3*x3 + y3*y3) * (y2 − y1)
+    C = (x1*x1 + y1*y1) * (x2 − x3) + (x2*x2 + y2*y2) * (x3 − x1) + (x3*x3 + y3*y3) * (x1 − x2)
+    D = (x1*x1 + y1*y1) * (x3*y2 − x2*y3) + (x2*x2 + y2*y2) * (x1*y3 − x3*y1) + (x3*x3 + y3*y3) * (x2*y1 − x1*y2)
+
+    If A=0 then the points are colinear elasewhere using A,B,C you can find center and radius of circle
+
+    xc = -B / 2 * A
+    yc = -C / 2 * A
+    r  = sqrt((B*B + C*C - 4 * A * D) / (4 * (A * A)))
+
+*/
+
+// bool Voronoi::getCircumcircle_(float x1, float y1, float x2, float y2, float x3, float y3, float* x, float* y, float* r)
 // {
-//     if (Left.y == SweepLine) return Left.x;
-//     if (Right.y == SweepLine) return Right.x;
+//     float A = x1 * (y2 - y3) - y1 * (x2 - x3) + x2 * y3 - x3 * y2;
+//     float B = (x1*x1 + y1*y1) * (y3 - y2) + (x2*x2 + y2*y2) * (y1 - y3) + (x3*x3 + y3*y3) * (y2 - y1);
+//     float C = (x1*x1 + y1*y1) * (x2 - x3) + (x2*x2 + y2*y2) * (x3 - x1) + (x3*x3 + y3*y3) * (x1 - x2);
+//     float D = (x1*x1 + y1*y1) * (x3*y2 - x2*y3) + (x2*x2 + y2*y2) * (x1*y3 - x3*y1) + (x3*x3 + y3*y3) * (x2*y1 - x1*y2);
 
-//     // edge
-//     Vector2 edgeStart = (Left.y > Right.y) ?
-//         new Vector2(Left.x, GetValueY(Right, Left.y, Left.x)) :
-//         new Vector2(Right.x, GetValueY(Left, Right.y, Right.x));
-//     Vector2 length = Left - Right;
-//     Vector2 direction = new Vector2(length.y, -length.x);
-//     float M = -1.0f / (length.y / length.x);
-//     float C = edgeStart.y - M * edgeStart.x;
+//     // If A=0 then the points are colinear elasewhere using A,B,C you can find center and radius of circle
+//     if (A == 0) return false;
 
-//     // parabola
-//     float k = (Left.y + SweepLine) * 0.5f;
-//     float p = (Left.y - SweepLine) * 0.5f;
-//     float a = 1.0f / (4.0f * p);
-//     float b = -Left.x / (2.0f * p);
-//     float c = (Left.x * Left.x / (4.0f * p)) + k;
+//     *x = -B / 2 * A;
+//     *y = -C / 2 * A;
+//     *r  = sqrt((B*B + C*C - 4 * A * D) / (4 * (A * A)));
 
-//     float aa = a;
-//     float bb = b - M;
-//     float cc = c - C;
-//     float discriminant = bb * bb - (4.0f * aa * cc);
-//     float x1 = (-bb + Mathf.Sqrt(discriminant)) / (2.0f * aa);
-//     float x2 = (-bb - Mathf.Sqrt(discriminant)) / (2.0f * aa);
-//     float min = x1 < x2 ? x1 : x2;
-//     float max = x1 > x2 ? x1 : x2;
-
-//     float x = direction.x < 0 ? min : max;
-
-//     return x;
-// }
-
-// public static float GetValueY(Vector2 Focus, float SweepLine, float X)
-// {
-//     float k = (Focus.y + SweepLine) * 0.5f;
-//     float p = (Focus.y - SweepLine) * 0.5f;
-//     float a = 1.0f / (p * 4.0f);
-//     float b = -Focus.x / (p * 2.0f);
-//     float c = (Focus.x * Focus.x / (p * 4.0f)) + k;
-
-//     float y = a * X * X + b * X + c;
-
-//     return y;
+//     return true;
 // }
