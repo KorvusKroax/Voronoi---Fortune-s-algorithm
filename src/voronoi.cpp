@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <iostream>
-#include <vector>
 
 #include "circle.h"
 #include "line.h"
@@ -33,130 +32,106 @@ void Voronoi::show(Canvas* canvas, int sweepLine_y)
     // sweep line
     Line::draw(canvas, 0, sweepLine_y, canvas->width - 1, sweepLine_y, EGA_GREY);
 
+    beachLine.clear();
 
-
-    // std::vector<Event> events;
-    // for (int i = 0; i < this->siteCount; i++) events.push_back(SiteEvent(this->sites[i].y, BeachlineParabola(this->sites[i])))
-
-    std::vector<BeachlineParabola> beachLine;
-    std::vector<CircleEvent> circleEvents;
     for (int i = 0; i < this->siteCount; i++) {
         if (this->sites[i].y > sweepLine_y) break;
 
         // adding first parabola
         if (beachLine.empty()) {
-            beachLine.push_back(BeachlineParabola(this->sites[i]));
+            beachLine.push_back(std::make_unique<BeachLine::Parabola>(&this->sites[i]));
             continue;
         }
 
         // get the parabola's index below current site
         int index = 0;
-        for (int j = 0; j < beachLine.size() - 1; j++) {
-            if (this->sites[i].x < getIntersect_x(beachLine[j].site.x, beachLine[j].site.y, beachLine[j + 1].site.x, beachLine[j + 1].site.y, sweepLine_y)) {
+        BeachLine::Parabola* curr_par = dynamic_cast<BeachLine::Parabola*>(beachLine[0].get());
+        for (int j = 0; j < beachLine.size() - 1; j += 2) {
+            BeachLine::Parabola* next_par = dynamic_cast<BeachLine::Parabola*>(beachLine[j + 2].get());
+
+            float intersect_x = getIntersect_x(
+                curr_par->site->x, curr_par->site->y,
+                next_par->site->x, next_par->site->y,
+                sweepLine_y
+            );
+
+            if (this->sites[i].x < intersect_x) {
                 index = j;
                 break;
             }
+            curr_par = next_par;
         }
 
-        // insert the new parabola into the beachLine
-        float dx = beachLine[index].site.x - this->sites[i].x;
-        float dy = beachLine[index].site.y - this->sites[i].y;
-        float edgeStart_y = (float(dx * dx) / (2 * dy)) + ((beachLine[index].site.y + this->sites[i].y) >> 1);
+        // duplicate the parabola found
+        BeachLine::Parabola* par = dynamic_cast<BeachLine::Parabola*>(beachLine[index].get());
+        beachLine.insert(beachLine.begin() + index, std::make_unique<BeachLine::Parabola>(par->site));
 
-        beachLine.insert(beachLine.begin() + index, beachLine[index]);
-        index++;
-        beachLine.insert(beachLine.begin() + index,
-            BeachlineParabola(this->sites[i],
-                new HalfEdge(this->sites[i].x, edgeStart_y, -dx / dy),
-                new HalfEdge(this->sites[i].x, edgeStart_y, dx / -dy)
-            )
-        );
+        // insert two edges beside the new parabola
+        float dx = par->site->x - this->sites[i].x;
+        float dy = par->site->y - this->sites[i].y;
+        float edgeStart_y = (float(dx * dx) / (2 * dy)) + ((par->site->y + this->sites[i].y) >> 1);
 
-        // check circumcircle to left
-        if (index - 2 >= 0) {
-            float cx, cy, cr;
-            if (getCircumcircle(
-                beachLine[index - 2].site.x, beachLine[index - 2].site.y,
-                beachLine[index - 1].site.x, beachLine[index - 1].site.y,
-                beachLine[index].site.x    , beachLine[index].site.y,
-                &cx, &cy, &cr
-            )) {
-                circleEvents.push_back(CircleEvent(cx, cy, cr));
-            }
-        }
-
-        // check circumcircle to right
-        if (index + 2 < beachLine.size()) {
-            float cx, cy, cr;
-            if (getCircumcircle(
-                beachLine[index].site.x    , beachLine[index].site.y,
-                beachLine[index + 1].site.x, beachLine[index + 1].site.y,
-                beachLine[index + 2].site.x, beachLine[index + 2].site.y,
-                &cx, &cy, &cr
-            )) {
-                circleEvents.push_back(CircleEvent(cx, cy, cr));
-            }
-        }
+        // left edge
+        beachLine.insert(beachLine.begin() + index + 1, std::make_unique<BeachLine::Edge>(this->sites[i].x, edgeStart_y, dx, -dy));
+        // new parabola
+        beachLine.insert(beachLine.begin() + index + 2, std::make_unique<BeachLine::Parabola>(&this->sites[i]));
+        // rigth edge
+        beachLine.insert(beachLine.begin() + index + 3, std::make_unique<BeachLine::Edge>(this->sites[i].x, edgeStart_y, -dx, dy));
     }
+
+
+
+
+    if (beachLine.empty()) return;
+
+
+
+    // console log
+
+    // for (int i = 0; i < beachLine.size(); i += 1) {
+    //     auto* par = dynamic_cast<Beachline::Base*>(beachLine[i].get());
+    //     std::cout << i << ": " << (par->getType() == Beachline::Type::EDGE ? "edge" : "parabola") << std::endl;
+    // }
+    // std::cout << std::endl;
 
 
 
     // visualisation
 
-    if (beachLine.empty()) return;
-
-    // // info to console
-    // for (int i = 0; i < beachLine.size(); i++) {
-    //     std::cout << "beachLine[" << i << "] = (x" << beachLine[i].site.x << ", y" << beachLine[i].site.y << ")" << std::endl;
-    // }
-    // std::cout << std::endl;
-
     // draw all full parabolas
-    for (int i = 0; i < beachLine.size(); i++) {
-        drawParabola(canvas, beachLine[i].site.x, beachLine[i].site.y, sweepLine_y, 0, canvas->width - 1, EGA_DARK_GREY);
+    for (int i = 0; i < beachLine.size(); i += 2) {
+        BeachLine::Parabola* par = dynamic_cast<BeachLine::Parabola*>(beachLine[i].get());
+        drawParabola(canvas, par->site->x, par->site->y, sweepLine_y, 0, canvas->width - 1, EGA_DARK_GREY);
     }
 
-    float max_x, min_x = 0;
-    for (int i = 0; i < beachLine.size(); i++) {
-        max_x = (i < beachLine.size() - 1) ?
-            getIntersect_x(beachLine[i].site.x, beachLine[i].site.y, beachLine[i + 1].site.x, beachLine[i + 1].site.y, sweepLine_y) :
+    // draw beachline
+    BeachLine::Parabola* curr_par = dynamic_cast<BeachLine::Parabola*>(beachLine[0].get());
+    float min_x = 0;
+    for (int i = 0; i < beachLine.size() - 1; i += 2) {
+        BeachLine::Parabola* next_par = dynamic_cast<BeachLine::Parabola*>(beachLine[i + 2].get());
+        float max_x = (i < beachLine.size() - 1) ?
+            getIntersect_x(curr_par->site->x, curr_par->site->y, next_par->site->x, next_par->site->y, sweepLine_y) :
             canvas->width - 1;
 
-        // draw beachline
-        drawParabola(canvas, beachLine[i].site.x, beachLine[i].site.y, sweepLine_y, min_x, max_x, EGA_GREEN);
+        // draw parabola
+        drawParabola(canvas, curr_par->site->x, curr_par->site->y, sweepLine_y, min_x, max_x, EGA_GREEN);
 
-        // draw parabola halfedges
-        if (beachLine[i].halfEdge_left != nullptr) {
-            float dx = min_x - beachLine[i].halfEdge_left->x;
-            Line::draw(canvas,
-                beachLine[i].halfEdge_left->x,
-                beachLine[i].halfEdge_left->y,
-                beachLine[i].halfEdge_left->x + dx,
-                beachLine[i].halfEdge_left->y + dx * beachLine[i].halfEdge_left->slope,
-                EGA_CYAN
-            );
-            canvas->setPixel(beachLine[i].halfEdge_left->x, beachLine[i].halfEdge_left->y, EGA_WHITE);
-        }
-        if (beachLine[i].halfEdge_right != nullptr) {
-            float dx = max_x - beachLine[i].halfEdge_right->x;
-            Line::draw(canvas,
-                beachLine[i].halfEdge_right->x,
-                beachLine[i].halfEdge_right->y,
-                beachLine[i].halfEdge_right->x + dx,
-                beachLine[i].halfEdge_right->y + dx * beachLine[i].halfEdge_right->slope,
-                EGA_ORANGE
-            );
-            canvas->setPixel(beachLine[i].halfEdge_right->x, beachLine[i].halfEdge_right->y, EGA_WHITE);
-        }
+        // draw halfedges
+        BeachLine::Edge* edge = dynamic_cast<BeachLine::Edge*>(beachLine[i + 1].get());
+        float dx = max_x - edge->x;
+        Line::draw(canvas,
+            edge->x,
+            edge->y,
+            edge->x + dx,
+            edge->y + dx * edge->slope,
+            EGA_CYAN
+        );
 
+        // draw edge's start
+        canvas->setPixel(edge->x, edge->y, EGA_WHITE);
+
+        curr_par = next_par;
         min_x = max_x;
-    }
-
-    if (circleEvents.empty()) return;
-
-    // draw circumcircles
-    for (int i = 0; i < circleEvents.size(); i++) {
-        Circle::draw(canvas, circleEvents[i].x, circleEvents[i].y, circleEvents[i].r, EGA_MAGENTA);
     }
 }
 
@@ -195,95 +170,3 @@ double Voronoi::getIntersect_x(double site_x, double site_y, double nextSite_x, 
 
     return site_y > nextSite_y ? std::max(x1, x2) : std::min(x1, x2);
 }
-
-bool Voronoi::getCircumcircle(float x1, float y1, float x2, float y2, float x3, float y3, float* x, float* y, float* r)
-{
-    if ((x1 == x2 && y1 == y2) || (x2 == x3 && y2 == y3) || (x3 == x1 && y3 == y1)) return false;
-
-    float perp_12_x1 = x1;
-    float perp_12_y1 = y1;
-    float perp_12_x2 = x2;
-    float perp_12_y2 = y2;
-    setPerpendicular(&perp_12_x1, &perp_12_y1, &perp_12_x2, &perp_12_y2);
-
-    float perp_23_x1 = x2;
-    float perp_23_y1 = y2;
-    float perp_23_x2 = x3;
-    float perp_23_y2 = y3;
-    setPerpendicular(&perp_23_x1, &perp_23_y1, &perp_23_x2, &perp_23_y2);
-
-    if (!lineIntersection(perp_12_x1, perp_12_y1, perp_12_x2, perp_12_y2, perp_23_x1, perp_23_y1, perp_23_x2, perp_23_y2, x, y)) {
-        return false;
-    }
-
-    float dx = *x - x1;
-    float dy = *y - y1;
-    *r = sqrt(dx * dx + dy * dy);
-
-    return true;
-}
-
-void Voronoi::setPerpendicular(float* x1, float* y1, float* x2, float* y2)
-{
-    float dx = *x2 - *x1;
-    float dy = *y2 - *y1;
-
-    float center_x = (*x1 + *x2) / 2;
-    float center_y = (*y1 + *y2) / 2;
-
-    *x1 = center_x + dy;
-    *y1 = center_y - dx;
-    *x2 = center_x - dy;
-    *y2 = center_y + dx;
-}
-
-bool Voronoi::lineIntersection(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4, float* ix, float* iy)
-{
-    float den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-    if (den == 0) return false;
-
-    float t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den;
-    if (0 > t || t > 1) return false;
-
-    float u = ((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / -den;
-    if (0 > u || u > 1) return false;
-
-    *ix = x1 + (x2 - x1) * t;
-    *iy = y1 + (y2 - y1) * t;
-    return true;
-}
-
-
-
-
-/*
-
-    A = x1 * (y2 − y3) − y1 * (x2 − x3) + x2 * y3 − x3 * y2
-    B = (x1*x1 + y1*y1) * (y3 − y2) + (x2*x2 + y2*y2) * (y1 − y3) + (x3*x3 + y3*y3) * (y2 − y1)
-    C = (x1*x1 + y1*y1) * (x2 − x3) + (x2*x2 + y2*y2) * (x3 − x1) + (x3*x3 + y3*y3) * (x1 − x2)
-    D = (x1*x1 + y1*y1) * (x3*y2 − x2*y3) + (x2*x2 + y2*y2) * (x1*y3 − x3*y1) + (x3*x3 + y3*y3) * (x2*y1 − x1*y2)
-
-    If A=0 then the points are colinear elasewhere using A,B,C you can find center and radius of circle
-
-    xc = -B / 2 * A
-    yc = -C / 2 * A
-    r  = sqrt((B*B + C*C - 4 * A * D) / (4 * (A * A)))
-
-*/
-
-// bool Voronoi::getCircumcircle_(float x1, float y1, float x2, float y2, float x3, float y3, float* x, float* y, float* r)
-// {
-//     float A = x1 * (y2 - y3) - y1 * (x2 - x3) + x2 * y3 - x3 * y2;
-//     float B = (x1*x1 + y1*y1) * (y3 - y2) + (x2*x2 + y2*y2) * (y1 - y3) + (x3*x3 + y3*y3) * (y2 - y1);
-//     float C = (x1*x1 + y1*y1) * (x2 - x3) + (x2*x2 + y2*y2) * (x3 - x1) + (x3*x3 + y3*y3) * (x1 - x2);
-//     float D = (x1*x1 + y1*y1) * (x3*y2 - x2*y3) + (x2*x2 + y2*y2) * (x1*y3 - x3*y1) + (x3*x3 + y3*y3) * (x2*y1 - x1*y2);
-
-//     // If A=0 then the points are colinear elasewhere using A,B,C you can find center and radius of circle
-//     if (A == 0) return false;
-
-//     *x = -B / 2 * A;
-//     *y = -C / 2 * A;
-//     *r  = sqrt((B*B + C*C - 4 * A * D) / (4 * (A * A)));
-
-//     return true;
-// }
