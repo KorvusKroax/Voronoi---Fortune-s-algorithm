@@ -5,13 +5,13 @@ enum BeachLineType { PARABOLA, EDGE };
 struct BeachLine
 {
     BeachLineType type;
-    int index;
-        // for parabola -> site index
-        // for edge -> edge index
+    void* ptr;
+        // for parabola -> site
+        // for edge -> edge
 
-    BeachLine(BeachLineType type, int index)
+    BeachLine(BeachLineType type, void* ptr)
     {
         this->type = type;
-        this->index = index;
+        this->ptr = ptr;
     }
 };
