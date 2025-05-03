@@ -22,7 +22,6 @@ class Voronoi {
         std::vector<Edge> edges;
 
         Voronoi(unsigned int width, unsigned int height, int siteCount, Site* sites);
-        ~Voronoi();
 
         void create(int sweepLine_y);
         double getIntersect_x(double parLeft_x, double parLeft_y, double parRight_x, double parRight_y, double sweepLine_y);

@@ -7,15 +7,15 @@ struct Event
     EventType type;
 
     float y;
-    int index;
-        // for site event -> site index
-        // for circle event -> beachline parabola index
+    void* ptr;
+        // for site event -> Site*
+        // for circle event -> BeachLine* (parabola)
 
-    Event(EventType type, float y, int index)
+    Event(EventType type, float y, void* ptr)
     {
         this->type = type;
 
         this->y = y;
-        this->index = index;
+        this->ptr = ptr;
     }
 };
