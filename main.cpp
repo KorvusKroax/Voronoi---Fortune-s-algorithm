@@ -52,7 +52,8 @@ int main()
         //     voronoi.setSite(mouse.xPos / PIXEL_SIZE, canvas.height - 1 - mouse.yPos / PIXEL_SIZE);
         // }
 
-        voronoi.show(&canvas, canvas.height - 1 -mouse.yPos / PIXEL_SIZE);
+        voronoi.create(canvas.height - 1 -mouse.yPos / PIXEL_SIZE);
+        voronoi.visualisation(&canvas, canvas.height - 1 -mouse.yPos / PIXEL_SIZE);
 
         openGL.update(&canvas);
     }

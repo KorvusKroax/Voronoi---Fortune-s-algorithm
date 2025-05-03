@@ -1,43 +1,17 @@
 #pragma once
 
-#include "site.h"
+enum BeachLineType { PARABOLA, EDGE };
 
-namespace BeachLine
+struct BeachLine
 {
-    enum Type { PARABOLA, EDGE };
+    BeachLineType type;
+    int index;
+        // for parabola -> site index
+        // for edge -> edge index
 
-    struct Base
+    BeachLine(BeachLineType type, int index)
     {
-        virtual Type getType() = 0;
-    };
-
-    struct Parabola : public Base
-    {
-        Site* site;
-
-        Parabola(Site* site)
-        {
-            this->site = site;
-        }
-
-        Type getType() { return PARABOLA; }
-    };
-
-    struct Edge : public Base
-    {
-        float x, y, dx, dy;
-        float slope;
-
-        Edge(float x, float y, float dx, float dy)
-        {
-            this->x = x;
-            this->y = y;
-            this->dx = dx;
-            this->dy = dy;
-
-            this->slope = this->dx / this->dy;
-        }
-
-        Type getType() { return EDGE; }
-    };
-}
+        this->type = type;
+        this->index = index;
+    }
+};

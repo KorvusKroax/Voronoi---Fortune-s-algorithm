@@ -66,7 +66,69 @@ struct Line
             }
         }
     }
+
+
+
+    static void setPerpendicular(float* x1, float* y1, float* x2, float* y2)
+    {
+        float dx = *x2 - *x1;
+        float dy = *y2 - *y1;
+
+        float center_x = (*x1 + *x2) * .5f;
+        float center_y = (*y1 + *y2) * .5f;
+
+        *x1 = center_x + dy;
+        *y1 = center_y - dx;
+        *x2 = center_x - dy;
+        *y2 = center_y + dx;
+    }
+
+    static bool intersection_line(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4, float* ix, float* iy)
+    {
+        float den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+        if (den == 0) return false;
+
+        float t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den;
+
+        *ix = x1 + (x2 - x1) * t;
+        *iy = y1 + (y2 - y1) * t;
+        return true;
+    }
+
+    static bool intersection_segment(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4, float* ix, float* iy)
+    {
+        float den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+        if (den == 0) return false;
+
+        float t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den;
+        if (0 > t || t > 1) return false;
+
+        float u = ((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / -den;
+        if (0 > u || u > 1) return false;
+
+        *ix = x1 + (x2 - x1) * t;
+        *iy = y1 + (y2 - y1) * t;
+        return true;
+    }
+
+    static bool intersection_ray(float x1, float y1, float x1_dir, float y1_dir, float x2, float y2, float x2_dir, float y2_dir, float* ix, float* iy)
+    {
+        float den = x1_dir * y2_dir - y1_dir * x2_dir;
+        if (den == 0) return false;
+
+        float t = ((x1 - x2) * y2_dir - (y1 - y2) * x2_dir) / den;
+        if (0 > t) return false;
+
+        float u = ((y1 - y2) * x1_dir - (x1 - x2) * y1_dir) / -den;
+        if (0 > u) return false;
+
+        *ix = x1 - x1_dir * t;
+        *iy = y1 - y1_dir * t;
+        return true;
+    }
 };
+
+
 
 // bool clip_box(float *x1, float *y1, float *x2, float *y2, float border_top, float border_right, float border_bottom, float border_left)
 // {
