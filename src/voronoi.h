@@ -19,7 +19,7 @@ class Voronoi {
 
         std::vector<Event> events;
         std::vector<BeachLine> beachLine;
-        std::vector<Edge> edges;
+        int beachLineCounter;
 
         Voronoi(unsigned int width, unsigned int height, int siteCount, Site* sites);
 

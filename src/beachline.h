@@ -10,12 +10,10 @@ struct BeachLine
         // for parabola -> Site*
         // for edge -> Edge*
 
-    BeachLine(BeachLineType type, void* ptr)
+    BeachLine(int id, BeachLineType type, void* ptr)
     {
-        this->id = unique_id++;
+        this->id = id;
         this->type = type;
         this->ptr = ptr;
     }
-
-    private: static int unique_id;
 };

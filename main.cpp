@@ -55,6 +55,23 @@ int main()
         voronoi.create(canvas.height - 1 -mouse.yPos / PIXEL_SIZE);
         voronoi.visualisation(&canvas, canvas.height - 1 -mouse.yPos / PIXEL_SIZE);
 
+        // for (int i = 0; i < voronoi.beachLine.size(); i++) {
+        //     std::cout << voronoi.beachLine[i].id << ": " << (voronoi.beachLine[i].type == PARABOLA ? "parabola" : "edge");
+        //     if (voronoi.beachLine[i].type == PARABOLA) {
+        //         std::cout << " y" << ((Site*)voronoi.beachLine[i].ptr)->y;
+        //     } else {
+        //         std::cout << " x" << ((Edge*)voronoi.beachLine[i].ptr)->x << ", y" << ((Edge*)voronoi.beachLine[i].ptr)->y
+        //             << " dx" << ((Edge*)voronoi.beachLine[i].ptr)->dx << ", dy" << ((Edge*)voronoi.beachLine[i].ptr)->dy;
+        //     }
+        //     std::cout << std::endl;
+        // }
+        // std::cout << std::endl;
+
+        // for (int i = 0; i < voronoi.events.size(); i++) {
+        //     std::cout << i << ": " << (voronoi.events[i].type == SITE ? "site" : "circle") << " - y" << voronoi.events[i].y << std::endl;
+        // }
+        // std::cout << std::endl;
+
         openGL.update(&canvas);
     }
 
