@@ -19,6 +19,8 @@ void Voronoi::create(int sweepLine_y)
     this->events.clear();
     this->beachLine.clear(); beachLineCounter = 0;
 
+    this->finishedHalfEdges.clear();
+
     // set events (add site events)
     for (int i = 0; i < this->siteCount; i++) {
         this->events.push_back(Event(SITE, this->sites[i].y, &this->sites[i]));
@@ -113,7 +115,8 @@ void Voronoi::create(int sweepLine_y)
             );
 
             // finish edge_left and edge_right at (ix, iy)
-            // ...
+            this->finishedHalfEdges.push_back(Edge(edge_left->x, edge_left->y, ix, iy));
+            this->finishedHalfEdges.push_back(Edge(edge_right->x, edge_right->y, ix, iy));
 
             parabola_index--;
             this->beachLine.erase(this->beachLine.begin() + parabola_index); // remove left edge
@@ -274,9 +277,18 @@ void Voronoi::visualisation(Canvas* canvas, int sweepLine_y)
             float dx = parabola->x - ix;
             float dy = parabola->y - iy;
             float r = sqrt(dx * dx + dy * dy);
-            Circle::draw(canvas, ix, iy, r, EGA_BRIGHT_MAGENTA);
-            Circle::draw(canvas, ix, iy, 1, EGA_BRIGHT_MAGENTA);
+            Circle::draw(canvas, ix, iy, r, EGA_MAGENTA);
+            Circle::draw(canvas, ix, iy, 1, EGA_MAGENTA);
         }
+    }
+
+    // draw finished edges
+    for (int i = 0; i < this->finishedHalfEdges.size(); i++) {
+        Line::draw(canvas,
+            this->finishedHalfEdges[i].x, this->finishedHalfEdges[i].y,
+            this->finishedHalfEdges[i].dx, this->finishedHalfEdges[i].dy,
+            EGA_YELLOW
+        );
     }
 }
 

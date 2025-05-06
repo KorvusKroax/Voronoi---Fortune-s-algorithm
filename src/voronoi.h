@@ -21,6 +21,8 @@ class Voronoi {
         std::vector<BeachLine> beachLine;
         int beachLineCounter;
 
+        std::vector<Edge> finishedHalfEdges;
+
         Voronoi(unsigned int width, unsigned int height, int siteCount, Site* sites);
 
         void create(int sweepLine_y);
