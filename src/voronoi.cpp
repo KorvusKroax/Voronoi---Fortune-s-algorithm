@@ -50,7 +50,7 @@ void Voronoi::create(int sweepLine_y)
                         float intersect_x = getIntersect_x(
                             curr_par->x, curr_par->y,
                             next_par->x, next_par->y,
-                            sweepLine_y
+                            curr_event->y
                         );
                         if (curr_event_site->x < intersect_x) {
                             index = i;
