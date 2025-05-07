@@ -14,10 +14,38 @@ Voronoi::Voronoi(unsigned int width, unsigned int height, int siteCount, Site* s
     this->sites = sites;
 }
 
+
+
 void Voronoi::create(int sweepLine_y)
 {
+    init();
+
+    // get first event (site)
+    Event* curr_event = &this->events.front();
+    if (curr_event->y > sweepLine_y) return; // temporary
+
+    // add first parabola in the beachline
+    this->beachLine.push_back(BeachLine(beachLine_id++, PARABOLA, curr_event->ptr));
+    this->events.erase(this->events.begin());
+
+    while (!this->events.empty()) {
+        curr_event = &this->events.front();
+
+        if (curr_event->y > sweepLine_y) break; // temporary
+
+        if (curr_event->type == SITE) siteEvent(curr_event);
+        else if (curr_event->type == CIRCLE) circleEvent(curr_event);
+
+        // remove event
+        this->events.erase(this->events.begin());
+    }
+}
+
+void Voronoi::init()
+{
     this->events.clear();
-    this->beachLine.clear(); beachLineCounter = 0;
+    this->beachLine.clear();
+    beachLine_id = 0;
 
     this->finishedHalfEdges.clear();
 
@@ -27,119 +55,109 @@ void Voronoi::create(int sweepLine_y)
     }
     // sort events by Y
     std::sort(this->events.begin(), this->events.end(), [](const Event& lhs, const Event& rhs) -> bool { return lhs.y < rhs.y; });
-
-    int count = 0; // temporary
-    while (!this->events.empty() && count < 1000) {
-        Event* curr_event = &this->events.front();
-        if (curr_event->y > sweepLine_y) break;
-
-        if (curr_event->type == SITE) {
-
-            if (this->beachLine.empty()) {
-                // adding first parabola (it will be placed out from loop as begining value of events)
-                this->beachLine.push_back(BeachLine(beachLineCounter++, PARABOLA, curr_event->ptr));
-            } else {
-
-                Site* curr_event_site = static_cast<Site*>(curr_event->ptr);
-                int index = 0;
-                if (this->beachLine.size() > 1) {
-                    // get the parabola's index below current site
-                    for (int i = 0; i < this->beachLine.size() - 1; i += 2) {
-                        Site* curr_par = static_cast<Site*>(beachLine[i].ptr);
-                        Site* next_par = static_cast<Site*>(beachLine[i + 2].ptr);
-                        float intersect_x = getIntersect_x(
-                            curr_par->x, curr_par->y,
-                            next_par->x, next_par->y,
-                            curr_event->y
-                        );
-                        if (curr_event_site->x < intersect_x) {
-                            index = i;
-                            break;
-                        }
-                    }
-                }
-
-                Site* parabola = static_cast<Site*>(this->beachLine[index].ptr);
-
-                // check if parabola has a circle event then remove that circle event
-                // ...
-
-                // duplicate the parabola found
-                this->beachLine.insert(this->beachLine.begin() + index, BeachLine(beachLineCounter++, PARABOLA, parabola));
-
-                // insert new parabola with two edges beside it
-                float dx = parabola->x - curr_event_site->x;
-                float dy = parabola->y - curr_event_site->y;
-                float edgeStart_y = (float(dx * dx) / (2 * dy)) + (float(parabola->y + curr_event_site->y) / 2);
-
-                Edge* edge_left = new Edge(curr_event_site->x, edgeStart_y, -dy, dx);
-                this->beachLine.insert(this->beachLine.begin() + index + 1, BeachLine(beachLineCounter++, EDGE, edge_left));
-
-                this->beachLine.insert(this->beachLine.begin() + index + 2, BeachLine(beachLineCounter++, PARABOLA, curr_event->ptr));
-
-                Edge* edge_right = new Edge(curr_event_site->x, edgeStart_y, dy, -dx);
-                this->beachLine.insert(this->beachLine.begin() + index + 3, BeachLine(beachLineCounter++, EDGE, edge_right));
-
-                // check and add circle events if needed
-                checkCircleEvent(index);
-                checkCircleEvent(index + 4);
-            }
-
-        } else if (curr_event->type == CIRCLE) {
-
-            BeachLine* curr_beachLine = static_cast<BeachLine*>(curr_event->ptr);
-            int parabola_index = std::distance(
-                this->beachLine.begin(),
-                std::find_if(this->beachLine.begin(), this->beachLine.end(),
-                    [curr_beachLine](const BeachLine& bl) { return bl.id == curr_beachLine->id; }
-                )
-            );
-
-            Site* prev_parabola = static_cast<Site*>(this->beachLine[parabola_index - 2].ptr);
-            Edge* edge_left = static_cast<Edge*>(this->beachLine[parabola_index - 1].ptr);
-            Site* parabola = static_cast<Site*>(this->beachLine[parabola_index].ptr);
-            Edge* edge_right = static_cast<Edge*>(this->beachLine[parabola_index + 1].ptr);
-            Site* next_parabola = static_cast<Site*>(this->beachLine[parabola_index + 2].ptr);
-
-            // check if prev_parabola has a circle event then remove that circle event
-            // ...
-
-            // check if next_parabola has a circle event then remove that circle event
-            // ...
-
-            float ix, iy;
-            Line::intersection_ray(
-                edge_left->x, edge_left->y, edge_left->dx, edge_left->dy,
-                edge_right->x, edge_right->y, edge_right->dx, edge_right->dy,
-                &ix, &iy
-            );
-
-            // finish edge_left and edge_right at (ix, iy)
-            this->finishedHalfEdges.push_back(Edge(edge_left->x, edge_left->y, ix, iy));
-            this->finishedHalfEdges.push_back(Edge(edge_right->x, edge_right->y, ix, iy));
-
-            parabola_index--;
-            this->beachLine.erase(this->beachLine.begin() + parabola_index); // remove left edge
-            this->beachLine.erase(this->beachLine.begin() + parabola_index); // remove parabola
-            this->beachLine.erase(this->beachLine.begin() + parabola_index); // remove right edge
-
-            float dx = next_parabola->x - prev_parabola->x;
-            float dy = next_parabola->y - prev_parabola->y;
-
-            Edge* new_edge = new Edge(ix, iy, dy, -dx);
-            this->beachLine.insert(this->beachLine.begin() + parabola_index, BeachLine(beachLineCounter++, EDGE, new_edge));
-
-            // check and add circle events if needed
-            checkCircleEvent(parabola_index - 1);
-            checkCircleEvent(parabola_index + 1);
-        }
-
-        // remove event
-        this->events.erase(this->events.begin());
-        count++;
-    }
-    if (count == 1000) std::cout << "INFINITE" << std::endl; // temporary
 }
+
+
+
+void Voronoi::siteEvent(Event* curr_event)
+{
+    Site* curr_event_site = static_cast<Site*>(curr_event->ptr);
+
+    int index = getParabolaIndexBelow(curr_event_site);
+
+    Site* parabola = static_cast<Site*>(this->beachLine[index].ptr);
+
+    // check if parabola has a circle event then remove that circle event
+    // ...
+
+    // duplicate the parabola found
+    this->beachLine.insert(this->beachLine.begin() + index, BeachLine(beachLine_id++, PARABOLA, parabola));
+
+    // insert new parabola with two edges beside it
+    float dx = parabola->x - curr_event_site->x;
+    float dy = parabola->y - curr_event_site->y;
+    float edgeStart_y = (float(dx * dx) / (2 * dy)) + (float(parabola->y + curr_event_site->y) / 2);
+
+    Edge* edge_left = new Edge(curr_event_site->x, edgeStart_y, -dy, dx);
+    this->beachLine.insert(this->beachLine.begin() + index + 1, BeachLine(beachLine_id++, EDGE, edge_left));
+
+    this->beachLine.insert(this->beachLine.begin() + index + 2, BeachLine(beachLine_id++, PARABOLA, curr_event->ptr));
+
+    Edge* edge_right = new Edge(curr_event_site->x, edgeStart_y, dy, -dx);
+    this->beachLine.insert(this->beachLine.begin() + index + 3, BeachLine(beachLine_id++, EDGE, edge_right));
+
+    // check and add circle events if needed
+    checkCircleEvent(index);
+    checkCircleEvent(index + 4);
+}
+
+int Voronoi::getParabolaIndexBelow(Site* curr_event_site)
+{
+    for (int i = 0; i < this->beachLine.size() - 1; i += 2) {
+        Site* curr_par = static_cast<Site*>(beachLine[i].ptr);
+        Site* next_par = static_cast<Site*>(beachLine[i + 2].ptr);
+        float intersect_x = getIntersect_x(
+            curr_par->x, curr_par->y,
+            next_par->x, next_par->y,
+            curr_event_site->y
+        );
+        if (curr_event_site->x < intersect_x) return i;
+    }
+    return 0;
+}
+
+
+
+void Voronoi::circleEvent(Event* curr_event)
+{
+    BeachLine* curr_beachLine = static_cast<BeachLine*>(curr_event->ptr);
+    int parabola_index = std::distance(
+        this->beachLine.begin(),
+        std::find_if(this->beachLine.begin(), this->beachLine.end(),
+            [curr_beachLine](const BeachLine& bl) { return bl.id == curr_beachLine->id; }
+        )
+    );
+
+    Site* prev_parabola = static_cast<Site*>(this->beachLine[parabola_index - 2].ptr);
+    Edge* edge_left = static_cast<Edge*>(this->beachLine[parabola_index - 1].ptr);
+    Site* parabola = static_cast<Site*>(this->beachLine[parabola_index].ptr);
+    Edge* edge_right = static_cast<Edge*>(this->beachLine[parabola_index + 1].ptr);
+    Site* next_parabola = static_cast<Site*>(this->beachLine[parabola_index + 2].ptr);
+
+    // check if prev_parabola has a circle event then remove that circle event
+    // ...
+
+    // check if next_parabola has a circle event then remove that circle event
+    // ...
+
+    float ix, iy;
+    Line::intersection_ray(
+        edge_left->x, edge_left->y, edge_left->dx, edge_left->dy,
+        edge_right->x, edge_right->y, edge_right->dx, edge_right->dy,
+        &ix, &iy
+    );
+
+    // finish edge_left and edge_right at (ix, iy)
+    this->finishedHalfEdges.push_back(Edge(edge_left->x, edge_left->y, ix, iy));
+    this->finishedHalfEdges.push_back(Edge(edge_right->x, edge_right->y, ix, iy));
+
+    parabola_index--;
+    this->beachLine.erase(this->beachLine.begin() + parabola_index); // remove left edge
+    this->beachLine.erase(this->beachLine.begin() + parabola_index); // remove parabola
+    this->beachLine.erase(this->beachLine.begin() + parabola_index); // remove right edge
+
+    float dx = next_parabola->x - prev_parabola->x;
+    float dy = next_parabola->y - prev_parabola->y;
+
+    Edge* new_edge = new Edge(ix, iy, dy, -dx);
+    this->beachLine.insert(this->beachLine.begin() + parabola_index, BeachLine(beachLine_id++, EDGE, new_edge));
+
+    // check and add circle events if needed
+    checkCircleEvent(parabola_index - 1);
+    checkCircleEvent(parabola_index + 1);
+}
+
+
 
 double Voronoi::getIntersect_x(double site_x, double site_y, double nextSite_x, double nextSite_y, double sweepLine_y)
 {
@@ -194,6 +212,8 @@ void Voronoi::checkCircleEvent(int parabola_index)
         this->events.insert(this->events.begin() + index, Event(CIRCLE, iy + r, &this->beachLine[parabola_index]));
     }
 }
+
+
 
 
 

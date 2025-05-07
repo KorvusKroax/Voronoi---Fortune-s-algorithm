@@ -19,15 +19,24 @@ class Voronoi {
 
         std::vector<Event> events;
         std::vector<BeachLine> beachLine;
-        int beachLineCounter;
+        int beachLine_id;
 
         std::vector<Edge> finishedHalfEdges;
 
         Voronoi(unsigned int width, unsigned int height, int siteCount, Site* sites);
 
         void create(int sweepLine_y);
+        void init();
+
+        void siteEvent(Event* curr_event);
+        int getParabolaIndexBelow(Site* curr_event_site);
+
+        void circleEvent(Event* curr_event);
+
         double getIntersect_x(double parLeft_x, double parLeft_y, double parRight_x, double parRight_y, double sweepLine_y);
         void checkCircleEvent(int parabolaIndex);
+
+
 
         void visualisation(Canvas* canvas, int sweepLine_y);
         void drawParabola(Canvas* canvas, int xf, int yf, int sweepLine_y, int minX, int maxX, Color color);
