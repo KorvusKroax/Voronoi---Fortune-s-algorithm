@@ -9,7 +9,7 @@ struct Event
     float y;
     void* ptr;
         // for site event -> Site*
-        // for circle event -> BeachLine* (parabola)
+        // for circle event -> Beachline* (parabola)
 
     Event(EventType type, float y, void* ptr)
     {

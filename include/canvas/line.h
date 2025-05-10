@@ -116,14 +116,14 @@ struct Line
         float den = x1_dir * y2_dir - y1_dir * x2_dir;
         if (den == 0) return false;
 
-        float t = ((x1 - x2) * y2_dir - (y1 - y2) * x2_dir) / den;
+        float t = ((x2 - x1) * y2_dir - (y2 - y1) * x2_dir) / den;
         if (0 > t) return false;
 
-        float u = ((y1 - y2) * x1_dir - (x1 - x2) * y1_dir) / -den;
+        float u = (x1_dir * (y2 - y1) - y1_dir * (x2 - x1)) / -den;
         if (0 > u) return false;
 
-        *ix = x1 - x1_dir * t;
-        *iy = y1 - y1_dir * t;
+        *ix = x1 + x1_dir * t;
+        *iy = y1 + y1_dir * t;
         return true;
     }
 };

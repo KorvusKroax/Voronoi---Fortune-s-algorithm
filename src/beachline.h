@@ -1,16 +1,16 @@
 #pragma once
 
-enum BeachLineType { PARABOLA, EDGE };
+enum BeachlineType { PARABOLA, EDGE };
 
-struct BeachLine
+struct Beachline
 {
     int id;
-    BeachLineType type;
+    BeachlineType type;
     void* ptr;
         // for parabola -> Site*
         // for edge -> Edge*
 
-    BeachLine(int id, BeachLineType type, void* ptr)
+    Beachline(int id, BeachlineType type, void* ptr)
     {
         this->id = id;
         this->type = type;
