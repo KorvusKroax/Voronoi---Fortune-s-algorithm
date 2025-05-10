@@ -5,6 +5,8 @@
 #include "canvas.h"
 #include "open_gl.h"
 #include "mouse.h"
+#include "line.h"
+#include "circle.h"
 
 #include "src/site.h"
 #include "src/voronoi.h"
@@ -17,14 +19,25 @@ Canvas canvas = Canvas(WIDTH, HEIGHT);
 OpenGL openGL = OpenGL(&canvas, PIXEL_SIZE, WINDOWED_RESIZABLE);
 Mouse mouse = Mouse(&openGL, 1, MOUSE_CURSOR_ENABLED);
 
-Site* setRandomSites(int count)
+Site* sites;
+int siteCount = 5;
+int siteIndex = 0;
+
+
+
+void showSite(int index)
 {
-    Site* sites = new Site[count];
-    for (int i = 0; i < count; i++) {
-        sites[i].x = rand() % WIDTH;
-        sites[i].y = rand() % HEIGHT;
+    Circle::draw_filled(&canvas, sites[index].x, sites[index].y, 1, EGA_BRIGHT_RED);
+
+    for (int j = 0; j < sites[index].edges.size(); j++) {
+        Line::draw(&canvas,
+            sites[index].edges[j].x1, sites[index].edges[j].y1,
+            sites[index].edges[j].x2, sites[index].edges[j].y2,
+            EGA_LIGHT_CYAN
+        );
+        Circle::draw_filled(&canvas, sites[index].edges[j].x1, sites[index].edges[j].y1, 2, EGA_GREEN);
+        Circle::draw(&canvas, sites[index].edges[j].x2, sites[index].edges[j].y2, 4, EGA_RED);
     }
-    return sites;
 }
 
 int main()
@@ -34,13 +47,17 @@ int main()
     srand(std::hash<std::string>()(seed));
     std::cout << "Seed: " << seed << std::endl;
 
-    int siteCount = 5;
-    Site* sites = setRandomSites(siteCount);
+    sites = new Site[siteCount];
+    for (int i = 0; i < siteCount; i++) {
+        sites[i].x = rand() % WIDTH;
+        sites[i].y = rand() % HEIGHT;
+    }
     Voronoi voronoi = Voronoi(WIDTH, HEIGHT, siteCount, sites);
 
     glfwSetWindowPos(openGL.window, 100, 50);
     glfwSetKeyCallback(openGL.window, [](GLFWwindow* window, int key, int scancode, int action, int mod) {
         if (key == GLFW_KEY_ESCAPE) glfwSetWindowShouldClose(openGL.window, true);
+        if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) siteIndex = (siteIndex + 1) % siteCount;
     });
 
     while (!glfwWindowShouldClose(openGL.window)) {
@@ -57,11 +74,19 @@ int main()
 
 
 
-        // voronoi.create(canvas.height - 1 -mouse.yPos / PIXEL_SIZE);
+
+
+        // voronoi.create(canvas.height - 1 - mouse.yPos / PIXEL_SIZE);
         // voronoi.visualisation(&canvas, canvas.height - 1 -mouse.yPos / PIXEL_SIZE);
 
         voronoi.create();
-        voronoi.visualisation(&canvas);
+        for (int i = 0; i < siteCount; i++) {
+            Circle::draw(&canvas, sites[i].x, sites[i].y, 1, EGA_DARK_GREY);
+            // showSite(i);
+        }
+        showSite(siteIndex);
+
+
 
 
 

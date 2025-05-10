@@ -9,6 +9,7 @@
 #include "event.h"
 #include "beachline.h"
 #include "half_edge.h"
+#include "edge.h"
 
 class Voronoi {
     public:
@@ -21,24 +22,25 @@ class Voronoi {
         std::vector<Beachline> beachline;
         int beachline_id;
 
-        std::vector<HalfEdge> finishedHalfEdges;
-
         Voronoi(unsigned int width, unsigned int height, int siteCount, Site* sites);
 
+        void init();
         void create();
         void create(int sweepLine_y);
-        void init();
 
         void siteEvent(Event* curr_event);
-        int getBeachlineIndexBelow(Site* curr_event_site);
         void circleEvent(Event* curr_event);
 
-        double getParabolaIntersect_x(double parLeft_x, double parLeft_y, double parRight_x, double parRight_y, double sweepLine_y);
         void checkAndAddCircleEvent(int parabola_index);
+        void checkAndAddCircleEvent_circle(int parabola_index);
         void checkAndRemoveCircleEvent(int parabola_index);
         void finishingHalfEdges();
 
-        void visualisation(Canvas* canvas);
-        void visualisation(Canvas* canvas, int sweepLine_y);
-        void drawParabola(Canvas* canvas, int xf, int yf, int sweepLine_y, int minX, int maxX, Color color);
+        int getBeachlineIndexBelow(Site* curr_event_site);
+        float getParabolaIntersect_x(float focus_x, float focus_y, float nextFocus_x, float nextFocus_y, float sweepLine_y);
+
+
+
+        void visualisation(Canvas* canvas, float sweepLine_y);
+        void drawParabola(Canvas* canvas, float xf, float yf, float sweepLine_y, float minX, float maxX, Color color);
 };
