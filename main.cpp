@@ -20,7 +20,7 @@ OpenGL openGL = OpenGL(&canvas, PIXEL_SIZE, WINDOWED_RESIZABLE);
 Mouse mouse = Mouse(&openGL, 1, MOUSE_CURSOR_ENABLED);
 
 Site* sites;
-int siteCount = 5;
+int siteCount = 6;
 int siteIndex = 0;
 
 
@@ -82,9 +82,9 @@ int main()
         voronoi.create();
         for (int i = 0; i < siteCount; i++) {
             Circle::draw(&canvas, sites[i].x, sites[i].y, 1, EGA_DARK_GREY);
-            // showSite(i);
+            showSite(i);
         }
-        showSite(siteIndex);
+        // showSite(siteIndex);
 
 
 

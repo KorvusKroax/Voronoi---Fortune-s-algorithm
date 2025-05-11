@@ -6,16 +6,21 @@ struct Event
 {
     EventType type;
 
-    float y;
+    float x, y;
     void* ptr;
-        // for site event -> Site*
-        // for circle event -> Beachline* (parabola)
+        // for SITE -> Site*
+        // for CIRCLE -> Beachline* (parabola)
 
-    Event(EventType type, float y, void* ptr)
+    Event(EventType type, float x, float y, void* ptr)
     {
         this->type = type;
-
+        this->x = x;
         this->y = y;
         this->ptr = ptr;
+    }
+
+    bool operator < (const Event& other) const
+    {
+        return this->y < other.y || (this->y == other.y && this->x < other.x);
     }
 };

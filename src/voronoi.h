@@ -26,21 +26,21 @@ class Voronoi {
 
         void init();
         void create();
-        void create(int sweepLine_y);
+        // void create(int sweepLine_y);
 
         void siteEvent(Event* curr_event);
         void circleEvent(Event* curr_event);
 
         void checkAndAddCircleEvent(int parabola_index);
-        void checkAndAddCircleEvent_circle(int parabola_index);
+        // void checkAndAddCircleEvent_circle(int parabola_index);
         void checkAndRemoveCircleEvent(int parabola_index);
         void finishingHalfEdges();
 
-        int getBeachlineIndexBelow(Site* curr_event_site);
+        int getParabolaIndexBelow(Site* curr_event_site);
         float getParabolaIntersect_x(float focus_x, float focus_y, float nextFocus_x, float nextFocus_y, float sweepLine_y);
 
 
 
-        void visualisation(Canvas* canvas, float sweepLine_y);
-        void drawParabola(Canvas* canvas, float xf, float yf, float sweepLine_y, float minX, float maxX, Color color);
+        // void visualisation(Canvas* canvas, float sweepLine_y);
+        // void drawParabola(Canvas* canvas, float xf, float yf, float sweepLine_y, float minX, float maxX, Color color);
 };

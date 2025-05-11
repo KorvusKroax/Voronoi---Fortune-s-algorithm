@@ -7,8 +7,8 @@ struct Beachline
     int id;
     BeachlineType type;
     void* ptr;
-        // for parabola -> Site*
-        // for edge -> Edge*
+        // for PARABOLA -> Site*
+        // for EDGE -> HalfEdge*
 
     Beachline(int id, BeachlineType type, void* ptr)
     {
