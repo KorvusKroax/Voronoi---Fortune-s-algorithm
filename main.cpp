@@ -8,8 +8,10 @@
 #include "line.h"
 #include "circle.h"
 
-#include "src/site.h"
-#include "src/voronoi.h"
+// #include "src/site.h"
+// #include "src/voronoi.h"
+
+#include "fortune.h"
 
 const int WIDTH = 256;
 const int HEIGHT = 256;
@@ -19,8 +21,9 @@ Canvas canvas = Canvas(WIDTH, HEIGHT);
 OpenGL openGL = OpenGL(&canvas, PIXEL_SIZE, WINDOWED_RESIZABLE);
 Mouse mouse = Mouse(&openGL, 1, MOUSE_CURSOR_ENABLED);
 
+Fortune* voronoi = new Fortune();
 Site* sites;
-int siteCount = 6;
+int siteCount = 10;
 int siteIndex = 0;
 
 
@@ -52,7 +55,6 @@ int main()
         sites[i].x = rand() % WIDTH;
         sites[i].y = rand() % HEIGHT;
     }
-    Voronoi voronoi = Voronoi(WIDTH, HEIGHT, siteCount, sites);
 
     glfwSetWindowPos(openGL.window, 100, 50);
     glfwSetKeyCallback(openGL.window, [](GLFWwindow* window, int key, int scancode, int action, int mod) {
@@ -79,12 +81,18 @@ int main()
         // voronoi.create(canvas.height - 1 - mouse.yPos / PIXEL_SIZE);
         // voronoi.visualisation(&canvas, canvas.height - 1 -mouse.yPos / PIXEL_SIZE);
 
-        voronoi.create();
+
+
+        // int sweepLine_y = canvas.height - 1 -mouse.yPos / PIXEL_SIZE;
+        // voronoi->create(WIDTH, HEIGHT, siteCount, sites, sweepLine_y);
+        // voronoi->visualisation(&canvas, sweepLine_y);
+
+        voronoi->create(WIDTH, HEIGHT, siteCount, sites);
         for (int i = 0; i < siteCount; i++) {
             Circle::draw(&canvas, sites[i].x, sites[i].y, 1, EGA_DARK_GREY);
             showSite(i);
         }
-        // showSite(siteIndex);
+        showSite(siteIndex);
 
 
 
