@@ -1,13 +1,13 @@
 #pragma once
 
-#include <deque>
+#include <vector>
 
 #include "half_edge.h"
 
 struct Site
 {
     double x, y;
-    std::deque<HalfEdge*> edges;
+    std::vector<HalfEdge*> edges;
 
     Site() : x(0), y(0) { this->edges.clear(); }
 

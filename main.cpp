@@ -23,7 +23,7 @@ Mouse mouse = Mouse(&openGL, 1, MOUSE_CURSOR_ENABLED);
 
 Fortune* voronoi = new Fortune();
 Site* sites;
-int siteCount = 5;
+int siteCount = 10;
 int siteIndex = 0;
 
 
@@ -47,12 +47,9 @@ void showSite(int index)
 
 int main()
 {
-    // 1745774288, 1748714277, 1748714344, 1748714424
-    std::string seed = "1745774288";
+    std::string seed = "1745774288"; // 1745774288, 1748714277, 1748714344, 1748714424
     // std::string seed = std::to_string(time(NULL));
-
     srand(std::hash<std::string>()(seed));
-    std::cout << "Seed: " << seed << std::endl;
 
     sites = new Site[siteCount];
     for (int i = 0; i < siteCount; i++) {

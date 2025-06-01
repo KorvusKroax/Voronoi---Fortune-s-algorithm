@@ -1,6 +1,7 @@
 #pragma once
 
 #include <deque>
+#include <vector>
 #include <algorithm> // for std::sort
 #include <cmath> // for std::sqrt
 #include <memory> // for std::unique_ptr
@@ -21,9 +22,9 @@ class Fortune
         Site* sites;
 
         std::deque<Event> events;
-        std::deque<std::unique_ptr<Beachline>> beachline;
+        std::vector<std::unique_ptr<Beachline>> beachline;
 
-        std::deque<HalfEdge*> finishedEdges;
+        std::vector<HalfEdge*> finishedEdges;
 
         Fortune() { }
 
@@ -38,7 +39,7 @@ class Fortune
 
             this->beachline.push_back(
                 std::make_unique<Beachline>(
-                    Beachline(Beachline::PARABOLA, static_cast<Site*>(events.front().ptr))
+                    Beachline(PARABOLA, static_cast<Site*>(events.front().ptr))
                 )
             );
             this->events.pop_front();
@@ -46,9 +47,9 @@ class Fortune
             while (!this->events.empty()) {
                 Event event = this->events.front();
 
-                if (event.type == Event::SITE) {
+                if (event.type == SITE) {
                     handle_siteEvent(&event);
-                } else if (event.type == Event::CIRCLE) {
+                } else if (event.type == CIRCLE) {
                     handle_circleEvent(&event);
                 }
 
@@ -63,7 +64,7 @@ class Fortune
             this->events.clear();
 
             for (int i = 0; i < siteCount; i++) {
-                this->events.emplace_back(Event::SITE, sites[i].x, sites[i].y, &sites[i]);
+                this->events.emplace_back(SITE, sites[i].x, sites[i].y, &sites[i]);
             }
 
             std::sort(this->events.begin(), this->events.end(),
@@ -85,7 +86,7 @@ class Fortune
             checkCircleEvent_remove(parabola_below_index);
 
             this->beachline.insert(this->beachline.begin() + parabola_below_index,
-                std::make_unique<Beachline>(Beachline::PARABOLA, parabola_below)
+                std::make_unique<Beachline>(PARABOLA, parabola_below)
             );
 
             double dx = parabola_below->x - new_site->x;
@@ -97,9 +98,9 @@ class Fortune
             edge_left->otherHalf = edge_right;
             edge_right->otherHalf = edge_left;
 
-            this->beachline.insert(this->beachline.begin() + parabola_below_index + 1, std::make_unique<Beachline>(Beachline::HALF_EDGE, edge_left));
-            this->beachline.insert(this->beachline.begin() + parabola_below_index + 2, std::make_unique<Beachline>(Beachline::PARABOLA, new_site));
-            this->beachline.insert(this->beachline.begin() + parabola_below_index + 3, std::make_unique<Beachline>(Beachline::HALF_EDGE, edge_right));
+            this->beachline.insert(this->beachline.begin() + parabola_below_index + 1, std::make_unique<Beachline>(HALF_EDGE, edge_left));
+            this->beachline.insert(this->beachline.begin() + parabola_below_index + 2, std::make_unique<Beachline>(PARABOLA, new_site));
+            this->beachline.insert(this->beachline.begin() + parabola_below_index + 3, std::make_unique<Beachline>(HALF_EDGE, edge_right));
 
             checkCircleEvent_add(parabola_below_index);
             checkCircleEvent_add(parabola_below_index + 4);
@@ -155,7 +156,7 @@ class Fortune
             float dy = parabola_right->y - parabola_left->y;
             HalfEdge* new_edge = new HalfEdge(ix, iy, -dy, dx, nullptr);
             this->beachline.insert(this->beachline.begin() + parabola_index,
-                std::make_unique<Beachline>(Beachline::HALF_EDGE, new_edge)
+                std::make_unique<Beachline>(HALF_EDGE, new_edge)
             );
 
             checkCircleEvent_add(parabola_index - 1);
@@ -185,19 +186,12 @@ class Fortune
 
             if (focus_y == nextFocus_y) return (focus_x + nextFocus_x) / 2.0;
 
-            double dp = 2.0 * (focus_y - sweepLine_y);
-            double a1 = 1.0 / dp;
-            double b1 = -2.0 * focus_x / dp;
-            double c1 = sweepLine_y + dp / 4.0 + (focus_x * focus_x) / dp;
+            double dp1 = 2.0 * (focus_y - sweepLine_y);
+            double dp2 = 2.0 * (nextFocus_y - sweepLine_y);
 
-            dp = 2.0 * (nextFocus_y - sweepLine_y);
-            double a2 = 1.0 / dp;
-            double b2 = -2.0 * nextFocus_x / dp;
-            double c2 = sweepLine_y + dp / 4.0 + (nextFocus_x * nextFocus_x) / dp;
-
-            double a = a1 - a2;
-            double b = b1 - b2;
-            double c = c1 - c2;
+            double a = (1.0 / dp1) - (1.0 / dp2);
+            double b = (-2.0 * focus_x / dp1) - (-2.0 * nextFocus_x / dp2);
+            double c = (sweepLine_y + dp1 / 4.0 + (focus_x * focus_x) / dp1) - (sweepLine_y + dp2 / 4.0 + (nextFocus_x * nextFocus_x) / dp2);
 
             double sqrtDiscriminant = std::sqrt(b * b - 4.0 * a * c);
             double x1 = (-b + sqrtDiscriminant) / (2.0 * a);
@@ -209,7 +203,7 @@ class Fortune
         void checkCircleEvent_remove(int parabola_index)
         {
             for (int i = 0; i < this->events.size(); i++) {
-                if (this->events[i].type == Event::CIRCLE && this->events[i].ptr == this->beachline[parabola_index].get()) {
+                if (this->events[i].type == CIRCLE && this->events[i].ptr == this->beachline[parabola_index].get()) {
                     this->events.erase(this->events.begin() + i);
                     break;
                 }
@@ -224,7 +218,7 @@ class Fortune
             double ix, iy, r;
             if (!checkCircle_edge(parabola_index, &ix, &iy, &r)) return;
 
-            insertEvent(Event(Event::CIRCLE, ix, iy + r, this->beachline[parabola_index].get()));
+            insertEvent(Event(CIRCLE, ix, iy + r, this->beachline[parabola_index].get()));
         }
 
         bool checkCircle_edge(int parabola_index, double* ix, double* iy, double* r)
@@ -289,7 +283,7 @@ class Fortune
             finishedEdges.clear();
 
             for (int i = 0; i < this->beachline.size(); i++) {
-                if (this->beachline[i]->type != Beachline::HALF_EDGE) continue;
+                if (this->beachline[i]->type != HALF_EDGE) continue;
 
                 HalfEdge* halfEdge = static_cast<HalfEdge*>(this->beachline[i]->ptr);
 
@@ -313,11 +307,11 @@ class Fortune
             double tMin = INFINITY;
 
             if (dir_x != 0) {
-                double x = (dir_x < 0 ? 0 : this->width);
+                double x = (dir_x < 0 ? 0 : this->width - 1);
                 double t = (x - x1) / dir_x;
                 if (t > 0) {
                     double y = y1 + t * dir_y;
-                    if (y >= 0 && y < this->height) {
+                    if (y >= 0 && y < this->height - 1) {
                         tMin = t;
                         *ix = x;
                         *iy = y;
@@ -326,11 +320,11 @@ class Fortune
             }
 
             if (dir_y != 0) {
-                double y = (dir_y < 0 ? 0 : this->height);
+                double y = (dir_y < 0 ? 0 : this->height - 1);
                 double t = (y - y1) / dir_y;
                 if (t > 0 && t < tMin) {
                     double x = x1 + t * dir_x;
-                    if (x >= 0 && x < this->width) {
+                    if (x >= 0 && x < this->width - 1) {
                         tMin = t;
                         *ix = x;
                         *iy = y;
