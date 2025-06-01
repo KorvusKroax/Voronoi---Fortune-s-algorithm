@@ -28,18 +28,31 @@ int siteIndex = 0;
 
 
 
+void createSites(std::string seed)
+{
+    srand(std::hash<std::string>()(seed));
+
+    sites = new Site[siteCount];
+    for (int i = 0; i < siteCount; i++) {
+        sites[i].x = rand() % WIDTH;
+        sites[i].y = rand() % HEIGHT;
+    }
+}
+
 void showSite(int index)
 {
     Circle::draw_filled(&canvas, sites[index].x, sites[index].y, 1, EGA_BRIGHT_RED);
 
     for (int j = 0; j < sites[index].edges.size(); j++) {
-        Line::draw(&canvas,
-            sites[index].edges[j]->x, sites[index].edges[j]->y,
-            sites[index].edges[j]->x + sites[index].edges[j]->dir_x, sites[index].edges[j]->y + sites[index].edges[j]->dir_y,
-            EGA_LIGHT_CYAN
-        );
-        Circle::draw_filled(&canvas, sites[index].edges[j]->x, sites[index].edges[j]->y, 2, EGA_GREEN);
-        Circle::draw(&canvas, sites[index].edges[j]->x + sites[index].edges[j]->dir_x, sites[index].edges[j]->y + sites[index].edges[j]->dir_y, 4, EGA_RED);
+
+        int x1 = sites[index].edges[j]->x;
+        int y1 = sites[index].edges[j]->y;
+        int x2 = sites[index].edges[j]->x + sites[index].edges[j]->dir_x;
+        int y2 = sites[index].edges[j]->y + sites[index].edges[j]->dir_y;
+
+        Line::draw(&canvas, x1, y1, x2, y2, EGA_LIGHT_CYAN);
+        Circle::draw_filled(&canvas, x1, y1, 2, EGA_GREEN);
+        Circle::draw(&canvas, x2, y2, 4, EGA_RED);
     }
 }
 
@@ -49,13 +62,6 @@ int main()
 {
     std::string seed = "1745774288"; // 1745774288, 1748714277, 1748714344, 1748714424
     // std::string seed = std::to_string(time(NULL));
-    srand(std::hash<std::string>()(seed));
-
-    sites = new Site[siteCount];
-    for (int i = 0; i < siteCount; i++) {
-        sites[i].x = rand() % WIDTH;
-        sites[i].y = rand() % HEIGHT;
-    }
 
     glfwSetWindowPos(openGL.window, 100, 50);
     glfwSetKeyCallback(openGL.window, [](GLFWwindow* window, int key, int scancode, int action, int mod) {
@@ -70,7 +76,7 @@ int main()
 
 
 
-
+        createSites(seed);
 
         voronoi->create(WIDTH, HEIGHT, siteCount, sites);
         for (int i = 0; i < siteCount; i++) {

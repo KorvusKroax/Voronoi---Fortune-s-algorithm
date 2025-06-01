@@ -137,15 +137,53 @@ class Fortune
                 exit(EXIT_FAILURE);
             }
 
-            edge_left->dir_x = ix - edge_left->x;
-            edge_left->dir_y = iy - edge_left->y;
-            parabola_left->edges.push_back(edge_left);
-            parabola->edges.push_back(edge_left);
+            if (edge_left->x >= 0 && edge_left->x < this->width && edge_left->y >= 0 && edge_left->y < this->height) {
+                double clipped_x = ix;
+                double clipped_y = iy;
+                if (ix < 0 || ix >= this->width || iy < 0 || iy >= this->height) {
+                    clipEdge(edge_left->x, edge_left->y, ix - edge_left->x, iy - edge_left->y, &clipped_x, &clipped_y);
+                }
+                edge_left->dir_x = clipped_x - edge_left->x;
+                edge_left->dir_y = clipped_y - edge_left->y;
+                parabola_left->edges.push_back(edge_left);
+                parabola->edges.push_back(edge_left);
+            } else if (ix >= 0 && ix < this->width && iy >= 0 && iy < this->height) {
+                double clipped_x = edge_left->x;
+                double clipped_y = edge_left->y;
+                if (edge_left->x < 0 || edge_left->x >= this->width || edge_left->y < 0 || edge_left->y >= this->height) {
+                    clipEdge(ix, iy, edge_left->x - ix, edge_left->y - iy, &clipped_x, &clipped_y);
+                }
+                edge_left->x = ix;
+                edge_left->y = iy;
+                edge_left->dir_x = clipped_x - edge_left->x;
+                edge_left->dir_y = clipped_y - edge_left->y;
+                parabola_left->edges.push_back(edge_left);
+                parabola->edges.push_back(edge_left);
+            }
 
-            edge_right->dir_x = ix - edge_right->x;
-            edge_right->dir_y = iy - edge_right->y;
-            parabola_right->edges.push_back(edge_right);
-            parabola->edges.push_back(edge_right);
+            if (edge_right->x >= 0 && edge_right->x < this->width && edge_right->y >= 0 && edge_right->y < this->height) {
+                double clipped_x = ix;
+                double clipped_y = iy;
+                if (ix < 0 || ix >= this->width || iy < 0 || iy >= this->height) {
+                    clipEdge(edge_right->x, edge_right->y, ix - edge_right->x, iy - edge_right->y, &clipped_x, &clipped_y);
+                }
+                edge_right->dir_x = clipped_x - edge_right->x;
+                edge_right->dir_y = clipped_y - edge_right->y;
+                parabola_right->edges.push_back(edge_right);
+                parabola->edges.push_back(edge_right);
+            } else if (ix >= 0 && ix < this->width && iy >= 0 && iy < this->height) {
+                double clipped_x = edge_right->x;
+                double clipped_y = edge_right->y;
+                if (edge_right->x < 0 || edge_right->x >= this->width || edge_right->y < 0 || edge_right->y >= this->height) {
+                    clipEdge(ix, iy, edge_right->x - ix, edge_right->y - iy, &clipped_x, &clipped_y);
+                }
+                edge_right->x = ix;
+                edge_right->y = iy;
+                edge_right->dir_x = clipped_x - edge_right->x;
+                edge_right->dir_y = clipped_y - edge_right->y;
+                parabola_right->edges.push_back(edge_right);
+                parabola->edges.push_back(edge_right);
+            }
 
             parabola_index--;
             this->beachline.erase(this->beachline.begin() + parabola_index); // remove left edge
@@ -285,12 +323,14 @@ class Fortune
             for (int i = 0; i < this->beachline.size(); i++) {
                 if (this->beachline[i]->type != HALF_EDGE) continue;
 
+                Site* site_left = static_cast<Site*>(this->beachline[i - 1]->ptr);
                 HalfEdge* halfEdge = static_cast<HalfEdge*>(this->beachline[i]->ptr);
+                Site* site_right = static_cast<Site*>(this->beachline[i + 1]->ptr);
 
-                if ((halfEdge->x < 0) ||// && halfEdge->x + halfEdge->dir_x < 0) ||
-                    (halfEdge->y < 0) ||// && halfEdge->y + halfEdge->dir_y < 0) ||
-                    (halfEdge->x >= this->width) ||// && halfEdge->x + halfEdge->dir_x >= this->width) ||
-                    (halfEdge->y >= this->height)// && halfEdge->y + halfEdge->dir_y >= this->height)
+                if ((halfEdge->x < 0 && halfEdge->x + halfEdge->dir_x < 0) ||
+                    (halfEdge->y < 0 && halfEdge->y + halfEdge->dir_y < 0) ||
+                    (halfEdge->x >= this->width && halfEdge->x + halfEdge->dir_x >= this->width) ||
+                    (halfEdge->y >= this->height && halfEdge->y + halfEdge->dir_y >= this->height)
                 ) continue;
 
                 double end_x, end_y;
@@ -298,6 +338,10 @@ class Fortune
 
                 halfEdge->dir_x = end_x - halfEdge->x;
                 halfEdge->dir_y = end_y - halfEdge->y;
+
+                site_left->edges.push_back(halfEdge);
+                site_right->edges.push_back(halfEdge);
+
                 finishedEdges.push_back(halfEdge);
             }
         }

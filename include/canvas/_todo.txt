@@ -1,0 +1,3 @@
+- ha nagyobb a canvas mint a képernyő akkor torzul a ratio WINDOWED módban
+- a Circle algoritmus nem jól méretezi a sugarat
+- a Font és a Text le kell választani egy külön namespace-be (pl. UI, ahol majd egyéb ablak és icon műveletek is lesznek)
