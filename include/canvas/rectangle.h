@@ -11,9 +11,9 @@ struct Rectangle
             canvas->setPixel(x + i, y, color);
             canvas->setPixel(x + i, y + height - 1, color);
         }
-        for (int i = 1; i < height - 1; i++) {
-            canvas->setPixel(x, y + i, color);
-            canvas->setPixel(x + width - 1, y + i, color);
+        for (int j = 1; j < height - 1; j++) {
+            canvas->setPixel(x, y + j, color);
+            canvas->setPixel(x + width - 1, y + j, color);
         }
     }
 

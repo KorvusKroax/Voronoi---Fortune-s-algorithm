@@ -1,13 +1,12 @@
 #pragma once
 
-struct HalfEdge {
-    float x, y, dir_x, dir_y;
+struct HalfEdge
+{
+    double x;
+    double y;
+    double dir_x;
+    double dir_y;
+    HalfEdge* otherHalf;
 
-    HalfEdge(float x, float y, float dir_x, float dir_y)
-    {
-        this->x = x;
-        this->y = y;
-        this->dir_x = dir_x;
-        this->dir_y = dir_y;
-    }
+    HalfEdge(double x, double y, double dir_x, double dir_y, HalfEdge* otherHalf) : x(x), y(y), dir_x(dir_x), dir_y(dir_y), otherHalf(otherHalf) { }
 };

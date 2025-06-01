@@ -1,26 +1,15 @@
 #pragma once
 
-enum EventType { SITE, CIRCLE };
-
 struct Event
 {
-    EventType type;
+    enum Type { SITE, CIRCLE };
 
-    float x, y;
+    Type type;
+    double x;
+    double y;
     void* ptr;
-        // for SITE -> Site*
-        // for CIRCLE -> Beachline* (parabola)
+        // SITE: Site*
+        // CIRCLE: Beachline*
 
-    Event(EventType type, float x, float y, void* ptr)
-    {
-        this->type = type;
-        this->x = x;
-        this->y = y;
-        this->ptr = ptr;
-    }
-
-    bool operator < (const Event& other) const
-    {
-        return this->y < other.y || (this->y == other.y && this->x < other.x);
-    }
+    Event(Type type, double x, double y, void* ptr) : type(type), x(x), y(y), ptr(ptr) { }
 };

@@ -83,6 +83,18 @@ struct Line
         *y2 = center_y + dx;
     }
 
+    static bool getNormalizedDirection(float x1, float y1, float x2, float y2, float* dir_x, float* dir_y)
+    {
+        float dx = x2 - x1;
+        float dy = y2 - y1;
+        float length = std::sqrt(dx * dx + dy * dy);
+        if (length == 0) return false;
+
+        *dir_x = dx / length;
+        *dir_y = dy / length;
+        return true;
+    }
+
     static bool intersection_line(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4, float* ix, float* iy)
     {
         float den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
@@ -126,62 +138,72 @@ struct Line
         *iy = y1 + y1_dir * t;
         return true;
     }
+
+    static void boundIntersection_ray(float x1, float y1, float dir_x, float dir_y, float min_x, float min_y, float max_x, float max_y, float* ix, float* iy)
+    {
+        float tMin = INFINITY;
+
+        if (dir_x != 0) {
+            float x = (dir_x < 0 ? min_x : max_x);
+            float t = (x - x1) / dir_x;
+            if (t > 0) {
+                float y = y1 + t * dir_y;
+                if (y >= min_y && y < max_y) {
+                    tMin = t;
+                    *ix = x;
+                    *iy = y;
+                }
+            }
+        }
+
+        if (dir_y != 0) {
+            float y = (dir_y < 0 ? min_y : max_y);
+            float t = (y - y1) / dir_y;
+            if (t > 0 && t < tMin) {
+                float x = x1 + t * dir_x;
+                if (x >= min_x && x < max_x) {
+                    tMin = t;
+                    *ix = x;
+                    *iy = y;
+                }
+            }
+        }
+    }
+
+    static bool boundClip_segment(float* x1, float* y1, float* x2, float* y2, float xmin, float ymin, float xmax, float ymax)
+    {
+        float p[4], q[4];
+        p[0] = -(x2 - x1); q[0] = *x1 - xmin;
+        p[1] =  (x2 - x1); q[1] = xmax - *x1;
+        p[2] = -(y2 - y1); q[2] = *y1 - ymin;
+        p[3] =  (y2 - y1); q[3] = ymax - *y1;
+
+        float u1 = 0.0f;
+        float u2 = 1.0f;
+        for (int i = 0; i < 4; i++) {
+            if (p[i] == 0) {
+                if (q[i] < 0) return false; // Line is parallel and outside
+            } else {
+                float t = q[i] / p[i];
+                if (p[i] < 0) {
+                    if (t > u2) return false;
+                    if (t > u1) u1 = t;
+                } else {
+                    if (t < u1) return false;
+                    if (t < u2) u2 = t;
+                }
+            }
+        }
+
+        float nx1 = *x1 + u1 * (*x2 - *x1);
+        float ny1 = *y1 + u1 * (*y2 - *y1);
+        float nx2 = *x1 + u2 * (*x2 - *x1);
+        float ny2 = *y1 + u2 * (*y2 - *y1);
+
+        *x1 = nx1;
+        *y1 = ny1;
+        *x2 = nx2;
+        *y2 = ny2;
+        return true;
+    }
 };
-
-
-
-// bool clip_box(float *x1, float *y1, float *x2, float *y2, float border_top, float border_right, float border_bottom, float border_left)
-// {
-//     bool isClipped = false;
-
-//     if (*y1 > border_top && *y2 > border_top) return isClipped;
-//     if (*x1 > border_right && *x2 > border_right) return isClipped;
-//     if (*y1 < border_bottom && *y2 < border_bottom) return isClipped;
-//     if (*x1 < border_left && *x2 < border_left) return isClipped;
-
-//     // clip top
-//     if (*y1 > border_top) {
-//         *x1 = *x2 - (*y2 - border_top) * ((*x2 - *x1) / (*y2 - *y1));
-//         *y1 = border_top;
-//         isClipped = true;
-//     } else if (*y2 > border_top) {
-//         *x2 = *x1 - (*y1 - border_top) * ((*x2 - *x1) / (*y2 - *y1));
-//         *y2 = border_top;
-//         isClipped = true;
-//     }
-
-//     // clip right
-//     if (*x1 > border_right) {
-//         *y1 = *y2 - (*x2 - border_right) * ((*y2 - *y1) / (*x2 - *x1));
-//         *x1 = border_right;
-//         isClipped = true;
-//     } else if (*x2 > border_right) {
-//         *y2 = *y1 - (*x1 - border_right) * ((*y2 - *y1) / (*x2 - *x1));
-//         *x2 = border_right;
-//         isClipped = true;
-//     }
-
-//     // clip bottom
-//     if (*y1 < border_bottom) {
-//         *x1 = *x2 - (*y2 - border_bottom) * ((*x2 - *x1) / (*y2 - *y1));
-//         *y1 = border_bottom;
-//         isClipped = true;
-//     } else if (*y2 < border_bottom) {
-//         *x2 = *x1 - (*y1 - border_bottom) * ((*x2 - *x1) / (*y2 - *y1));
-//         *y2 = border_bottom;
-//         isClipped = true;
-//     }
-
-//     // clip left
-//     if (*x1 < border_left) {
-//         *y1 = *y2 - (*x2 - border_left) * ((*y2 - *y1) / (*x2 - *x1));
-//         *x1 = border_left;
-//         isClipped = true;
-//     } else if (*x2 < border_left) {
-//         *y2 = *y1 - (*x1 - border_left) * ((*y2 - *y1) / (*x2 - *x1));
-//         *x2 = border_left;
-//         isClipped = true;
-//     }
-
-//     return isClipped;
-// }

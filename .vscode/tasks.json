@@ -18,7 +18,7 @@
                 "./include/canvas/lodepng/*.cpp",
                 "./include/open_gl/*.cpp",
                 "./include/open_gl/glad/glad.c",
-                "./src/*.cpp",
+                // "./src/*.cpp",
                 "-lglfw3dll",
                 "-o",
                 "${fileDirname}\\${fileBasenameNoExtension}.exe"

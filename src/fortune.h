@@ -6,90 +6,11 @@
 #include <memory> // for std::unique_ptr
 #include <iostream> // for std::cout and std::endl
 
-#include "canvas.h" // for visualization purposes
-#include "line.h"
-#include "circle.h"
-
-
-
-struct Edge {
-    double x1, y1, x2, y2;
-
-    Edge(double x1, double y1, double x2, double y2) : x1(x1), y1(y1), x2(x2), y2(y2) { }
-};
-
-
-
-struct Site
-{
-    double x, y;
-    std::deque<Edge> edges;
-
-    Site() : x(0), y(0) { this->edges.clear(); }
-
-    Site(double x, double y) : x(x), y(y) { this->edges.clear(); }
-
-    void addEdge(double x1, double y1, double x2, double y2)
-    {
-        this->edges.push_back(
-            cross(x1, y1, x2, y2, x, y) < 0 ?
-                Edge(x1, y1, x2, y2) :
-                Edge(x2, y2, x1, y1)
-        );
-    }
-
-    inline double cross(double x1, double y1, double x2, double y2, double px, double py)
-    {
-        return (x2 - x1) * (py - y1) - (y2 - y1) * (px - x1);
-        // result > 0: p is left
-        // result = 0: p is on line
-        // result < 0: p is right
-    }
-};
-
-
-
-struct Event
-{
-    enum Type { SITE, CIRCLE };
-
-    Type type;
-    double x;
-    double y;
-    void* ptr;
-        // SITE: Site*
-        // CIRCLE: Beachline*
-
-    Event(Type type, double x, double y, void* ptr) : type(type), x(x), y(y), ptr(ptr) { }
-};
-
-
-
-struct Beachline
-{
-    enum Type { PARABOLA, HALF_EDGE };
-
-    Type type;
-    void* ptr;
-        // PARABOLA: Site*
-        // HALF_EDGE: HalfEdge*
-
-    Beachline(Type type, void* ptr) : type(type), ptr(ptr) { }
-};
-
-
-
-struct HalfEdge
-{
-    double x;
-    double y;
-    double dir_x;
-    double dir_y;
-
-    HalfEdge(double x, double y, double dir_x, double dir_y) : x(x), y(y), dir_x(dir_x), dir_y(dir_y) { }
-};
-
-
+// #include "edge.h"
+#include "half_edge.h"
+#include "site.h"
+#include "event.h"
+#include "beachline.h"
 
 class Fortune
 {
@@ -101,6 +22,8 @@ class Fortune
 
         std::deque<Event> events;
         std::deque<std::unique_ptr<Beachline>> beachline;
+
+        std::deque<HalfEdge*> finishedEdges;
 
         Fortune() { }
 
@@ -169,8 +92,10 @@ class Fortune
             double dy = parabola_below->y - new_site->y;
             double edge_origin_y = ((dx * dx) / (dy * 2.0)) + ((parabola_below->y + new_site->y) / 2.0);
 
-            HalfEdge* edge_left = new HalfEdge(new_site->x, edge_origin_y, dy, -dx);
-            HalfEdge* edge_right = new HalfEdge(new_site->x, edge_origin_y, -dy, dx);
+            HalfEdge* edge_left = new HalfEdge(new_site->x, edge_origin_y, dy, -dx, nullptr);
+            HalfEdge* edge_right = new HalfEdge(new_site->x, edge_origin_y, -dy, dx, nullptr);
+            edge_left->otherHalf = edge_right;
+            edge_right->otherHalf = edge_left;
 
             this->beachline.insert(this->beachline.begin() + parabola_below_index + 1, std::make_unique<Beachline>(Beachline::HALF_EDGE, edge_left));
             this->beachline.insert(this->beachline.begin() + parabola_below_index + 2, std::make_unique<Beachline>(Beachline::PARABOLA, new_site));
@@ -190,7 +115,7 @@ class Fortune
                 }
             }
 
-            if (parabola_index < 0 || parabola_index >= this->beachline.size()) {
+            if (parabola_index < 0 || parabola_index > this->beachline.size() - 1) {
                 std::cerr << "Error: parabola not found in handle_circleEvent() (" << parabola_index << ")" << std::endl;
                 exit(EXIT_FAILURE);
             }
@@ -211,10 +136,15 @@ class Fortune
                 exit(EXIT_FAILURE);
             }
 
-            parabola_left->addEdge(edge_left->x, edge_left->y, ix, iy);
-            parabola->addEdge(edge_left->x, edge_left->y, ix, iy);
-            parabola->addEdge(edge_right->x, edge_right->y, ix, iy);
-            parabola_right->addEdge(edge_right->x, edge_right->y, ix, iy);
+            edge_left->dir_x = ix - edge_left->x;
+            edge_left->dir_y = iy - edge_left->y;
+            parabola_left->edges.push_back(edge_left);
+            parabola->edges.push_back(edge_left);
+
+            edge_right->dir_x = ix - edge_right->x;
+            edge_right->dir_y = iy - edge_right->y;
+            parabola_right->edges.push_back(edge_right);
+            parabola->edges.push_back(edge_right);
 
             parabola_index--;
             this->beachline.erase(this->beachline.begin() + parabola_index); // remove left edge
@@ -223,7 +153,7 @@ class Fortune
 
             float dx = parabola_right->x - parabola_left->x;
             float dy = parabola_right->y - parabola_left->y;
-            HalfEdge* new_edge = new HalfEdge(ix, iy, -dy, dx);
+            HalfEdge* new_edge = new HalfEdge(ix, iy, -dy, dx, nullptr);
             this->beachline.insert(this->beachline.begin() + parabola_index,
                 std::make_unique<Beachline>(Beachline::HALF_EDGE, new_edge)
             );
@@ -356,86 +286,56 @@ class Fortune
 
         void finishingHalfEdges()
         {
-
-
-
-            return;
-
-
+            finishedEdges.clear();
 
             for (int i = 0; i < this->beachline.size(); i++) {
                 if (this->beachline[i]->type != Beachline::HALF_EDGE) continue;
 
-                Site* left_site = static_cast<Site*>(this->beachline[i - 1]->ptr);
-                HalfEdge* edge = static_cast<HalfEdge*>(this->beachline[i]->ptr);
-                Site* right_site = static_cast<Site*>(this->beachline[i + 1]->ptr);
+                HalfEdge* halfEdge = static_cast<HalfEdge*>(this->beachline[i]->ptr);
 
+                if ((halfEdge->x < 0) ||// && halfEdge->x + halfEdge->dir_x < 0) ||
+                    (halfEdge->y < 0) ||// && halfEdge->y + halfEdge->dir_y < 0) ||
+                    (halfEdge->x >= this->width) ||// && halfEdge->x + halfEdge->dir_x >= this->width) ||
+                    (halfEdge->y >= this->height)// && halfEdge->y + halfEdge->dir_y >= this->height)
+                ) continue;
 
+                double end_x, end_y;
+                clipEdge(halfEdge->x, halfEdge->y, halfEdge->dir_x, halfEdge->dir_y, &end_x, &end_y);
 
-                // float end_x, end_y;
-                // if (abs(edge->dir_x) > abs(edge->dir_y)) {
-                //     float length_x = edge->dir_x < 0 ? -edge->x : this->width - edge->x - 1;
-                //     end_x = edge->x + length_x;
-                //     end_y = edge->y + length_x * (edge->dir_y / edge->dir_x);
-                // } else {
-                //     float length_y = edge->dir_y < 0 ? -edge->y : this->height - edge->y - 1;
-                //     end_x = edge->x + length_y * (edge->dir_x / edge->dir_y);
-                //     end_y = edge->y + length_y;
-                // }
-                // if (edge->x < 0 && end_x < 0) continue;
-                // if (edge->y < 0 && end_y < 0) continue;
-                // if (edge->x >= this->width && end_x >= this->width) continue;
-                // if (edge->y >= this->height && end_y >= this->height) continue;
-                // left_site->addEdge(edge->x, edge->y, end_x, end_y);
-                // right_site->addEdge(edge->x, edge->y, end_x, end_y);
-
-
-
-                double end_x = edge->x + edge->dir_x;
-                double end_y = edge->y + edge->dir_y;
-                left_site->addEdge(edge->x, edge->y, end_x, end_y);
-                right_site->addEdge(edge->x, edge->y, end_x, end_y);
-
-
-
-                // double end_x = edge->x + edge->dir_x;
-                // double end_y = edge->y + edge->dir_y;
-                // double x1 = edge->x, y1 = edge->y, x2 = end_x, y2 = end_y;
-                // if (clipLineToRect(x1, y1, x2, y2, 0, 0, this->width, this->height)) {
-                //     left_site->addEdge(x1, y1, x2, y2);
-                //     right_site->addEdge(x1, y1, x2, y2);
-                // }
+                halfEdge->dir_x = end_x - halfEdge->x;
+                halfEdge->dir_y = end_y - halfEdge->y;
+                finishedEdges.push_back(halfEdge);
             }
         }
 
-        bool clipLineToRect(double& x1, double& y1, double& x2, double& y2, double xmin, double ymin, double xmax, double ymax)
+        void clipEdge(double x1, double y1, double dir_x, double dir_y, double* ix, double* iy)
         {
-            double p[4], q[4];
-            p[0] = -(x2 - x1); q[0] = x1 - xmin;
-            p[1] =  (x2 - x1); q[1] = xmax - x1;
-            p[2] = -(y2 - y1); q[2] = y1 - ymin;
-            p[3] =  (y2 - y1); q[3] = ymax - y1;
+            double tMin = INFINITY;
 
-            double u1 = 0.0, u2 = 1.0;
-            for (int i = 0; i < 4; i++) {
-                if (p[i] == 0) {
-                    if (q[i] < 0) return false; // Line is parallel and outside
-                } else {
-                    double t = q[i] / p[i];
-                    if (p[i] < 0) {
-                        if (t > u2) return false;
-                        if (t > u1) u1 = t;
-                    } else {
-                        if (t < u1) return false;
-                        if (t < u2) u2 = t;
+            if (dir_x != 0) {
+                double x = (dir_x < 0 ? 0 : this->width);
+                double t = (x - x1) / dir_x;
+                if (t > 0) {
+                    double y = y1 + t * dir_y;
+                    if (y >= 0 && y < this->height) {
+                        tMin = t;
+                        *ix = x;
+                        *iy = y;
                     }
                 }
             }
-            double nx1 = x1 + u1 * (x2 - x1);
-            double ny1 = y1 + u1 * (y2 - y1);
-            double nx2 = x1 + u2 * (x2 - x1);
-            double ny2 = y1 + u2 * (y2 - y1);
-            x1 = nx1; y1 = ny1; x2 = nx2; y2 = ny2;
-            return true;
+
+            if (dir_y != 0) {
+                double y = (dir_y < 0 ? 0 : this->height);
+                double t = (y - y1) / dir_y;
+                if (t > 0 && t < tMin) {
+                    double x = x1 + t * dir_x;
+                    if (x >= 0 && x < this->width) {
+                        tMin = t;
+                        *ix = x;
+                        *iy = y;
+                    }
+                }
+            }
         }
 };

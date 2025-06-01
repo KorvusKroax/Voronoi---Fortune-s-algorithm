@@ -1,19 +1,13 @@
 #pragma once
 
-enum BeachlineType { PARABOLA, EDGE };
-
 struct Beachline
 {
-    int id;
-    BeachlineType type;
-    void* ptr;
-        // for PARABOLA -> Site*
-        // for EDGE -> HalfEdge*
+    enum Type { PARABOLA, HALF_EDGE };
 
-    Beachline(int id, BeachlineType type, void* ptr)
-    {
-        this->id = id;
-        this->type = type;
-        this->ptr = ptr;
-    }
+    Type type;
+    void* ptr;
+        // PARABOLA: Site*
+        // HALF_EDGE: HalfEdge*
+
+    Beachline(Type type, void* ptr) : type(type), ptr(ptr) { }
 };

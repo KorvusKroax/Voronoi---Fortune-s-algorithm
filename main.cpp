@@ -8,10 +8,10 @@
 #include "line.h"
 #include "circle.h"
 
-// #include "src/site.h"
-// #include "src/voronoi.h"
+#include "src/fortune.h"
+#include "src/site.h"
 
-#include "fortune.h"
+
 
 const int WIDTH = 256;
 const int HEIGHT = 256;
@@ -23,7 +23,7 @@ Mouse mouse = Mouse(&openGL, 1, MOUSE_CURSOR_ENABLED);
 
 Fortune* voronoi = new Fortune();
 Site* sites;
-int siteCount = 10;
+int siteCount = 5;
 int siteIndex = 0;
 
 
@@ -34,18 +34,22 @@ void showSite(int index)
 
     for (int j = 0; j < sites[index].edges.size(); j++) {
         Line::draw(&canvas,
-            sites[index].edges[j].x1, sites[index].edges[j].y1,
-            sites[index].edges[j].x2, sites[index].edges[j].y2,
+            sites[index].edges[j]->x, sites[index].edges[j]->y,
+            sites[index].edges[j]->x + sites[index].edges[j]->dir_x, sites[index].edges[j]->y + sites[index].edges[j]->dir_y,
             EGA_LIGHT_CYAN
         );
-        Circle::draw_filled(&canvas, sites[index].edges[j].x1, sites[index].edges[j].y1, 2, EGA_GREEN);
-        Circle::draw(&canvas, sites[index].edges[j].x2, sites[index].edges[j].y2, 4, EGA_RED);
+        Circle::draw_filled(&canvas, sites[index].edges[j]->x, sites[index].edges[j]->y, 2, EGA_GREEN);
+        Circle::draw(&canvas, sites[index].edges[j]->x + sites[index].edges[j]->dir_x, sites[index].edges[j]->y + sites[index].edges[j]->dir_y, 4, EGA_RED);
     }
 }
 
+
+
 int main()
 {
-    std::string seed = "1745774288";//std::to_string(time(NULL));
+    // 1745774288, 1748714277, 1748714344, 1748714424
+    std::string seed = "1745774288";
+    // std::string seed = std::to_string(time(NULL));
 
     srand(std::hash<std::string>()(seed));
     std::cout << "Seed: " << seed << std::endl;
@@ -67,25 +71,9 @@ int main()
 
         mouse.update(&openGL);
 
-        // if (glfwGetMouseButton(openGL.window, GLFW_MOUSE_BUTTON_LEFT)) {
-        //     voronoi.setSite(
-        //         mouse.xPos / PIXEL_SIZE,
-        //         canvas.height - 1 - mouse.yPos / PIXEL_SIZE
-        //     );
-        // }
 
 
 
-
-
-        // voronoi.create(canvas.height - 1 - mouse.yPos / PIXEL_SIZE);
-        // voronoi.visualisation(&canvas, canvas.height - 1 -mouse.yPos / PIXEL_SIZE);
-
-
-
-        // int sweepLine_y = canvas.height - 1 -mouse.yPos / PIXEL_SIZE;
-        // voronoi->create(WIDTH, HEIGHT, siteCount, sites, sweepLine_y);
-        // voronoi->visualisation(&canvas, sweepLine_y);
 
         voronoi->create(WIDTH, HEIGHT, siteCount, sites);
         for (int i = 0; i < siteCount; i++) {
@@ -93,6 +81,16 @@ int main()
             showSite(i);
         }
         showSite(siteIndex);
+
+        for (int j = 0; j < voronoi->finishedEdges.size(); j++) {
+            Line::draw(&canvas,
+                voronoi->finishedEdges[j]->x, voronoi->finishedEdges[j]->y,
+                voronoi->finishedEdges[j]->x + voronoi->finishedEdges[j]->dir_x, voronoi->finishedEdges[j]->y + voronoi->finishedEdges[j]->dir_y,
+                EGA_LIGHT_BLUE
+            );
+            Circle::draw_filled(&canvas, voronoi->finishedEdges[j]->x, voronoi->finishedEdges[j]->y, 2, EGA_GREEN);
+            Circle::draw(&canvas, voronoi->finishedEdges[j]->x + voronoi->finishedEdges[j]->dir_x, voronoi->finishedEdges[j]->y + voronoi->finishedEdges[j]->dir_y, 4, EGA_RED);
+        }
 
 
 
