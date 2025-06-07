@@ -8,7 +8,7 @@
 #include <iostream> // for std::cout and std::endl
 
 // #include "edge.h"
-#include "half_edge.h"
+#include "edge.h"
 #include "site.h"
 #include "event.h"
 #include "beachline.h"
@@ -23,8 +23,7 @@ class Fortune
 
         std::deque<Event> events;
         std::vector<std::unique_ptr<Beachline>> beachline;
-
-        std::vector<HalfEdge*> finishedEdges;
+        std::vector<HalfEdge> halfEdges;
 
         Fortune() { }
 
@@ -63,7 +62,7 @@ class Fortune
         {
             this->events.clear();
 
-            for (int i = 0; i < siteCount; i++) {
+            for (int i = 0; i < this->siteCount; i++) {
                 this->events.emplace_back(SITE, sites[i].x, sites[i].y, &sites[i]);
             }
 
@@ -74,6 +73,7 @@ class Fortune
             );
 
             this->beachline.clear();
+            this->halfEdges.clear();
         }
 
         void handle_siteEvent(Event* event)
@@ -91,10 +91,10 @@ class Fortune
 
             double dx = parabola_below->x - new_site->x;
             double dy = parabola_below->y - new_site->y;
-            double edge_origin_y = ((dx * dx) / (dy * 2.0)) + ((parabola_below->y + new_site->y) / 2.0);
+            double edge_start_y = ((dx * dx) / (dy * 2.0)) + ((parabola_below->y + new_site->y) / 2.0);
 
-            HalfEdge* edge_left = new HalfEdge(new_site->x, edge_origin_y, dy, -dx, nullptr);
-            HalfEdge* edge_right = new HalfEdge(new_site->x, edge_origin_y, -dy, dx, nullptr);
+            HalfEdge* edge_left = new HalfEdge(new_site->x, edge_start_y, dy, -dx, nullptr);
+            HalfEdge* edge_right = new HalfEdge(new_site->x, edge_start_y, -dy, dx, nullptr);
             edge_left->otherHalf = edge_right;
             edge_right->otherHalf = edge_left;
 
@@ -137,64 +137,25 @@ class Fortune
                 exit(EXIT_FAILURE);
             }
 
-            if (edge_left->x >= 0 && edge_left->x < this->width && edge_left->y >= 0 && edge_left->y < this->height) {
-                double clipped_x = ix;
-                double clipped_y = iy;
-                if (ix < 0 || ix >= this->width || iy < 0 || iy >= this->height) {
-                    clipEdge(edge_left->x, edge_left->y, ix - edge_left->x, iy - edge_left->y, &clipped_x, &clipped_y);
-                }
-                edge_left->dir_x = clipped_x - edge_left->x;
-                edge_left->dir_y = clipped_y - edge_left->y;
-                parabola_left->edges.push_back(edge_left);
-                parabola->edges.push_back(edge_left);
-            } else if (ix >= 0 && ix < this->width && iy >= 0 && iy < this->height) {
-                double clipped_x = edge_left->x;
-                double clipped_y = edge_left->y;
-                if (edge_left->x < 0 || edge_left->x >= this->width || edge_left->y < 0 || edge_left->y >= this->height) {
-                    clipEdge(ix, iy, edge_left->x - ix, edge_left->y - iy, &clipped_x, &clipped_y);
-                }
-                edge_left->x = ix;
-                edge_left->y = iy;
-                edge_left->dir_x = clipped_x - edge_left->x;
-                edge_left->dir_y = clipped_y - edge_left->y;
-                parabola_left->edges.push_back(edge_left);
-                parabola->edges.push_back(edge_left);
+            if (clipHalfEdge(edge_left, ix, iy)) {
+                parabola_left->addEdge(edge_left);
+                parabola->addEdge(edge_left);
             }
 
-            if (edge_right->x >= 0 && edge_right->x < this->width && edge_right->y >= 0 && edge_right->y < this->height) {
-                double clipped_x = ix;
-                double clipped_y = iy;
-                if (ix < 0 || ix >= this->width || iy < 0 || iy >= this->height) {
-                    clipEdge(edge_right->x, edge_right->y, ix - edge_right->x, iy - edge_right->y, &clipped_x, &clipped_y);
-                }
-                edge_right->dir_x = clipped_x - edge_right->x;
-                edge_right->dir_y = clipped_y - edge_right->y;
-                parabola_right->edges.push_back(edge_right);
-                parabola->edges.push_back(edge_right);
-            } else if (ix >= 0 && ix < this->width && iy >= 0 && iy < this->height) {
-                double clipped_x = edge_right->x;
-                double clipped_y = edge_right->y;
-                if (edge_right->x < 0 || edge_right->x >= this->width || edge_right->y < 0 || edge_right->y >= this->height) {
-                    clipEdge(ix, iy, edge_right->x - ix, edge_right->y - iy, &clipped_x, &clipped_y);
-                }
-                edge_right->x = ix;
-                edge_right->y = iy;
-                edge_right->dir_x = clipped_x - edge_right->x;
-                edge_right->dir_y = clipped_y - edge_right->y;
-                parabola_right->edges.push_back(edge_right);
-                parabola->edges.push_back(edge_right);
+            if (clipHalfEdge(edge_right, ix, iy)) {
+                parabola_right->addEdge(edge_right);
+                parabola->addEdge(edge_right);
             }
 
             parabola_index--;
-            this->beachline.erase(this->beachline.begin() + parabola_index); // remove left edge
+            this->beachline.erase(this->beachline.begin() + parabola_index); // remove edge_left
             this->beachline.erase(this->beachline.begin() + parabola_index); // remove parabola
-            this->beachline.erase(this->beachline.begin() + parabola_index); // remove right edge
+            this->beachline.erase(this->beachline.begin() + parabola_index); // remove edge_right
 
             float dx = parabola_right->x - parabola_left->x;
             float dy = parabola_right->y - parabola_left->y;
-            HalfEdge* new_edge = new HalfEdge(ix, iy, -dy, dx, nullptr);
             this->beachline.insert(this->beachline.begin() + parabola_index,
-                std::make_unique<Beachline>(HALF_EDGE, new_edge)
+                std::make_unique<Beachline>(HALF_EDGE, new HalfEdge(ix, iy, -dy, dx, nullptr))
             );
 
             checkCircleEvent_add(parabola_index - 1);
@@ -316,10 +277,37 @@ class Fortune
             this->events.insert(this->events.begin() + index, event);
         }
 
+        bool clipHalfEdge(HalfEdge* edge, double ix, double iy)
+        {
+            if (edge->x >= 0 && edge->x < this->width && edge->y >= 0 && edge->y < this->height) {
+                double clipped_x = ix;
+                double clipped_y = iy;
+                if (ix < 0 || ix >= this->width || iy < 0 || iy >= this->height) {
+                    clipRay(edge->x, edge->y, ix - edge->x, iy - edge->y, &clipped_x, &clipped_y);
+                }
+                edge->dir_x = clipped_x - edge->x;
+                edge->dir_y = clipped_y - edge->y;
+                return true;
+            }
+
+            if (ix >= 0 && ix < this->width && iy >= 0 && iy < this->height) {
+                double clipped_x = edge->x;
+                double clipped_y = edge->y;
+                if (edge->x < 0 || edge->x >= this->width || edge->y < 0 || edge->y >= this->height) {
+                    clipRay(ix, iy, edge->x - ix, edge->y - iy, &clipped_x, &clipped_y);
+                }
+                edge->x = ix;
+                edge->y = iy;
+                edge->dir_x = clipped_x - edge->x;
+                edge->dir_y = clipped_y - edge->y;
+                return true;
+            }
+
+            return false;
+        }
+
         void finishingHalfEdges()
         {
-            finishedEdges.clear();
-
             for (int i = 0; i < this->beachline.size(); i++) {
                 if (this->beachline[i]->type != HALF_EDGE) continue;
 
@@ -334,19 +322,17 @@ class Fortune
                 ) continue;
 
                 double end_x, end_y;
-                clipEdge(halfEdge->x, halfEdge->y, halfEdge->dir_x, halfEdge->dir_y, &end_x, &end_y);
+                clipRay(halfEdge->x, halfEdge->y, halfEdge->dir_x, halfEdge->dir_y, &end_x, &end_y);
 
                 halfEdge->dir_x = end_x - halfEdge->x;
                 halfEdge->dir_y = end_y - halfEdge->y;
 
-                site_left->edges.push_back(halfEdge);
-                site_right->edges.push_back(halfEdge);
-
-                finishedEdges.push_back(halfEdge);
+                site_left->addEdge(halfEdge);
+                site_right->addEdge(halfEdge);
             }
         }
 
-        void clipEdge(double x1, double y1, double dir_x, double dir_y, double* ix, double* iy)
+        void clipRay(double x1, double y1, double dir_x, double dir_y, double* ix, double* iy)
         {
             double tMin = INFINITY;
 

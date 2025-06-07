@@ -2,16 +2,42 @@
 
 #include <vector>
 
-#include "half_edge.h"
+#include "edge.h"
 
 struct Site
 {
     double x, y;
-    std::vector<HalfEdge*> edges;
+    std::vector<Edge*> edges;
 
-    Site() : x(0), y(0) { this->edges.clear(); }
+    Site() : x(0), y(0) { }
 
-    Site(double x, double y) : x(x), y(y) { this->edges.clear(); }
+    Site(double x, double y) : x(x), y(y) { }
+
+    void addEdge(HalfEdge* halfEdge)
+    {
+        int otherIndex = -1;
+        for (int i = 0; i < this->edges.size(); i++) {
+            if (edges[i] == halfEdge->otherHalf) {
+                otherIndex = i;
+                break;
+            };
+        }
+
+        if (otherIndex == -1) {
+            edges.push_back(halfEdge);
+            return;
+        }
+
+        this->edges.erase(this->edges.begin() + otherIndex);
+
+        int x1 = halfEdge->otherHalf->x + halfEdge->otherHalf->dir_x;
+        int y1 = halfEdge->otherHalf->y + halfEdge->otherHalf->dir_y;
+        int x2 = halfEdge->x + halfEdge->dir_x;
+        int y2 = halfEdge->y + halfEdge->dir_y;
+
+        Edge* finishedEdge = new Edge(x1, y1, x2, y2);
+        edges.push_back(finishedEdge);
+    }
 
     // void addEdge(double x1, double y1, double x2, double y2)
     // {
