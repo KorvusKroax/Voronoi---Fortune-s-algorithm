@@ -44,36 +44,14 @@ void showSite(int index)
     Circle::draw_filled(&canvas, sites[index].x, sites[index].y, 1, EGA_BRIGHT_RED);
 
     for (int j = 0; j < sites[index].edges.size(); j++) {
+        int x1 = sites[index].edges[j]->x1;
+        int y1 = sites[index].edges[j]->y1;
+        int x2 = sites[index].edges[j]->x2;
+        int y2 = sites[index].edges[j]->y2;
 
-        if (HalfEdge* he = dynamic_cast<HalfEdge*>(sites[index].edges[j])) {
-            int x1, y1;
-            if (he->otherHalf == nullptr) {
-                x1 = he->x;
-                y1 = he->y;
-            } else {
-                x1 = he->otherHalf->x + he->otherHalf->dir_x;
-                y1 = he->otherHalf->y + he->otherHalf->dir_y;
-            }
-            int x2 = he->x + he->dir_x;
-            int y2 = he->y + he->dir_y;
-
-            Line::draw(&canvas, x1, y1, x2, y2, EGA_CYAN);
-            Circle::draw_filled(&canvas, x1, y1, 2, EGA_GREEN);
-            Circle::draw(&canvas, x2, y2, 4, EGA_RED);
-
-        } else {
-
-            int x1 = sites[index].edges[j]->x;
-            int y1 = sites[index].edges[j]->y;
-            int x2 = sites[index].edges[j]->x2;
-            int y2 = sites[index].edges[j]->y2;
-
-            Line::draw(&canvas, x1, y1, x2, y2, EGA_WHITE);
-            Circle::draw_filled(&canvas, x1, y1, 2, EGA_LIGHT_GREEN);
-            Circle::draw(&canvas, x2, y2, 4, EGA_BRIGHT_RED);
-
-        }
-
+        Line::draw(&canvas, x1, y1, x2, y2, EGA_LIGHT_CYAN);
+        Circle::draw_filled(&canvas, x1, y1, 2, EGA_GREEN);
+        Circle::draw(&canvas, x2, y2, 4, EGA_RED);
     }
 }
 
@@ -97,16 +75,17 @@ int main()
 
 
 
+
+
         createSites(seed);
 
         voronoi->create(WIDTH, HEIGHT, siteCount, sites);
         for (int i = 0; i < siteCount; i++) {
             Circle::draw(&canvas, sites[i].x, sites[i].y, 1, EGA_DARK_GREY);
-            showSite(i);
+            // showSite(i);
         }
-
-        // showSite(siteIndex);
-        // std::cout << "edgeCount: " << sites[siteIndex].edges.size() << std::endl;
+        showSite(siteIndex);
+        std::cout << "edgeCount: " << sites[siteIndex].edges.size() << std::endl;
 
 
 

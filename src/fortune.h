@@ -23,7 +23,7 @@ class Fortune
 
         std::deque<Event> events;
         std::vector<std::unique_ptr<Beachline>> beachline;
-        std::vector<HalfEdge> halfEdges;
+        std::vector<HalfEdge*> halfEdges;
 
         Fortune() { }
 
@@ -56,11 +56,15 @@ class Fortune
             }
 
             finishingHalfEdges();
+            finishingSites();
+            cleanUp();
         }
 
         void init()
         {
             this->events.clear();
+            this->beachline.clear();
+            this->halfEdges.clear();
 
             for (int i = 0; i < this->siteCount; i++) {
                 this->events.emplace_back(SITE, sites[i].x, sites[i].y, &sites[i]);
@@ -71,9 +75,6 @@ class Fortune
                     return a.y < b.y || (a.y == b.y && a.x < b.x);
                 }
             );
-
-            this->beachline.clear();
-            this->halfEdges.clear();
         }
 
         void handle_siteEvent(Event* event)
@@ -97,6 +98,9 @@ class Fortune
             HalfEdge* edge_right = new HalfEdge(new_site->x, edge_start_y, -dy, dx, nullptr);
             edge_left->otherHalf = edge_right;
             edge_right->otherHalf = edge_left;
+
+            this->halfEdges.push_back(edge_left);
+            this->halfEdges.push_back(edge_right);
 
             this->beachline.insert(this->beachline.begin() + parabola_below_index + 1, std::make_unique<Beachline>(HALF_EDGE, edge_left));
             this->beachline.insert(this->beachline.begin() + parabola_below_index + 2, std::make_unique<Beachline>(PARABOLA, new_site));
@@ -154,8 +158,12 @@ class Fortune
 
             float dx = parabola_right->x - parabola_left->x;
             float dy = parabola_right->y - parabola_left->y;
+            HalfEdge* new_edge = new HalfEdge(ix, iy, -dy, dx, nullptr);
+
+            this->halfEdges.push_back(new_edge);
+
             this->beachline.insert(this->beachline.begin() + parabola_index,
-                std::make_unique<Beachline>(HALF_EDGE, new HalfEdge(ix, iy, -dy, dx, nullptr))
+                std::make_unique<Beachline>(HALF_EDGE, new_edge)
             );
 
             checkCircleEvent_add(parabola_index - 1);
@@ -306,32 +314,6 @@ class Fortune
             return false;
         }
 
-        void finishingHalfEdges()
-        {
-            for (int i = 0; i < this->beachline.size(); i++) {
-                if (this->beachline[i]->type != HALF_EDGE) continue;
-
-                Site* site_left = static_cast<Site*>(this->beachline[i - 1]->ptr);
-                HalfEdge* halfEdge = static_cast<HalfEdge*>(this->beachline[i]->ptr);
-                Site* site_right = static_cast<Site*>(this->beachline[i + 1]->ptr);
-
-                if ((halfEdge->x < 0 && halfEdge->x + halfEdge->dir_x < 0) ||
-                    (halfEdge->y < 0 && halfEdge->y + halfEdge->dir_y < 0) ||
-                    (halfEdge->x >= this->width && halfEdge->x + halfEdge->dir_x >= this->width) ||
-                    (halfEdge->y >= this->height && halfEdge->y + halfEdge->dir_y >= this->height)
-                ) continue;
-
-                double end_x, end_y;
-                clipRay(halfEdge->x, halfEdge->y, halfEdge->dir_x, halfEdge->dir_y, &end_x, &end_y);
-
-                halfEdge->dir_x = end_x - halfEdge->x;
-                halfEdge->dir_y = end_y - halfEdge->y;
-
-                site_left->addEdge(halfEdge);
-                site_right->addEdge(halfEdge);
-            }
-        }
-
         void clipRay(double x1, double y1, double dir_x, double dir_y, double* ix, double* iy)
         {
             double tMin = INFINITY;
@@ -361,5 +343,48 @@ class Fortune
                     }
                 }
             }
+        }
+
+        void finishingHalfEdges()
+        {
+            for (int i = 0; i < this->beachline.size(); i++) {
+                if (this->beachline[i]->type != HALF_EDGE) continue;
+
+                Site* site_left = static_cast<Site*>(this->beachline[i - 1]->ptr);
+                HalfEdge* halfEdge = static_cast<HalfEdge*>(this->beachline[i]->ptr);
+                Site* site_right = static_cast<Site*>(this->beachline[i + 1]->ptr);
+
+                if ((halfEdge->x < 0 && halfEdge->x + halfEdge->dir_x < 0) ||
+                    (halfEdge->y < 0 && halfEdge->y + halfEdge->dir_y < 0) ||
+                    (halfEdge->x >= this->width && halfEdge->x + halfEdge->dir_x >= this->width) ||
+                    (halfEdge->y >= this->height && halfEdge->y + halfEdge->dir_y >= this->height)
+                ) continue;
+
+                double end_x, end_y;
+                clipRay(halfEdge->x, halfEdge->y, halfEdge->dir_x, halfEdge->dir_y, &end_x, &end_y);
+
+                halfEdge->dir_x = end_x - halfEdge->x;
+                halfEdge->dir_y = end_y - halfEdge->y;
+
+                site_left->addEdge(halfEdge);
+                site_right->addEdge(halfEdge);
+            }
+        }
+
+        void finishingSites()
+        {
+            for (int i = 0; i < this->siteCount; i++) {
+                this->sites[i].updateEdges();
+            }
+        }
+
+        void cleanUp()
+        {
+            for (HalfEdge* edge : this->halfEdges) {
+                delete edge;
+            }
+            this->halfEdges.clear();
+            this->beachline.clear();
+            this->events.clear();
         }
 };

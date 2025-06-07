@@ -30,29 +30,50 @@ struct Site
 
         this->edges.erase(this->edges.begin() + otherIndex);
 
-        int x1 = halfEdge->otherHalf->x + halfEdge->otherHalf->dir_x;
-        int y1 = halfEdge->otherHalf->y + halfEdge->otherHalf->dir_y;
-        int x2 = halfEdge->x + halfEdge->dir_x;
-        int y2 = halfEdge->y + halfEdge->dir_y;
-
-        Edge* finishedEdge = new Edge(x1, y1, x2, y2);
-        edges.push_back(finishedEdge);
+        double x1 = halfEdge->otherHalf->x + halfEdge->otherHalf->dir_x;
+        double y1 = halfEdge->otherHalf->y + halfEdge->otherHalf->dir_y;
+        double x2 = halfEdge->x + halfEdge->dir_x;
+        double y2 = halfEdge->y + halfEdge->dir_y;
+        edges.push_back(
+            cross(x1, y1, x2, y2, this->x, this->y) < 0 ?
+                new Edge(x1, y1, x2, y2) :
+                new Edge(x2, y2, x1, y1)
+        );
     }
 
-    // void addEdge(double x1, double y1, double x2, double y2)
-    // {
-    //     this->edges.push_back(
-    //         cross(x1, y1, x2, y2, this->x, this->y) < 0 ?
-    //             Edge(x1, y1, x2, y2) :
-    //             Edge(x2, y2, x1, y1)
-    //     );
-    // }
+    void updateEdges()
+    {
+        halfEdgesToEdges();
+    }
 
-    // inline double cross(double x1, double y1, double x2, double y2, double px, double py)
-    // {
-    //     return (x2 - x1) * (py - y1) - (y2 - y1) * (px - x1);
-    //     // result > 0: p is left
-    //     // result = 0: p is on line
-    //     // result < 0: p is right
-    // }
+    void halfEdgesToEdges()
+    {
+        std::vector<Edge*> newEdges;
+
+        for (Edge* edge : this->edges) {
+            if (HalfEdge* halfEdge = dynamic_cast<HalfEdge*>(edge)) {
+                double x1 = halfEdge->x;
+                double y1 = halfEdge->y;
+                double x2 = halfEdge->x + halfEdge->dir_x;
+                double y2 = halfEdge->y + halfEdge->dir_y;
+                newEdges.push_back(
+                    cross(x1, y1, x2, y2, this->x, this->y) < 0 ?
+                        new Edge(x1, y1, x2, y2) :
+                        new Edge(x2, y2, x1, y1)
+                );
+            } else {
+                newEdges.push_back(edge);
+            }
+        }
+
+        this->edges = std::move(newEdges);
+    }
+
+    inline double cross(double x1, double y1, double x2, double y2, double px, double py)
+    {
+        return (x2 - x1) * (py - y1) - (y2 - y1) * (px - x1);
+        // result > 0: p is left
+        // result = 0: p is on line
+        // result < 0: p is right
+    }
 };
