@@ -1,7 +1,7 @@
 #pragma once
 
-// #include <vector>
-#include <deque>
+#include <vector>
+// #include <deque>
 #include <iostream>
 #include <string>
 
@@ -10,11 +10,11 @@
 struct Site
 {
     double x, y;
-    std::deque<Edge*> edges;
+    std::vector<Edge*> edges;
 
-    Site() : x(0), y(0) { }
+    // Site() : x(0), y(0) { }
 
-    Site(double x, double y) : x(x), y(y) { }
+    // Site(double x, double y) : x(x), y(y) { }
 
     void addEdge(HalfEdge* halfEdge)
     {
@@ -46,15 +46,15 @@ struct Site
         );
     }
 
-    void updateEdges()
-    {
-        halfEdgesToEdges();
-        arrangeEdgesToContinuousPath();
-    }
+    // void updateEdges()
+    // {
+    //     halfEdgesToEdges();
+    //     // arrangeEdgesToContinuousPath();
+    // }
 
     void halfEdgesToEdges()
     {
-        std::deque<Edge*> newEdges;
+        std::vector<Edge*> newEdges;
 
         for (Edge* edge : this->edges) {
             if (HalfEdge* halfEdge = dynamic_cast<HalfEdge*>(edge)) {
@@ -75,101 +75,101 @@ struct Site
         this->edges = std::move(newEdges);
     }
 
-    void arrangeEdgesToContinuousPath()
-    {
-        // // Remove zero-length edges
-        // this->edges.erase(
-        //     std::remove_if(
-        //         this->edges.begin(),
-        //         this->edges.end(),
-        //         [](Edge* edge) {
-        //             return
-        //                 std::abs(edge->x1 - edge->x2) < 1e-10 &&
-        //                 std::abs(edge->y1 - edge->y2) < 1e-10;
-        //         }
-        //     ),
-        //     this->edges.end()
-        // );
+    // void arrangeEdgesToContinuousPath()
+    // {
+    //     // // Remove zero-length edges
+    //     // this->edges.erase(
+    //     //     std::remove_if(
+    //     //         this->edges.begin(),
+    //     //         this->edges.end(),
+    //     //         [](Edge* edge) {
+    //     //             return
+    //     //                 std::abs(edge->x1 - edge->x2) < 1e-10 &&
+    //     //                 std::abs(edge->y1 - edge->y2) < 1e-10;
+    //     //         }
+    //     //     ),
+    //     //     this->edges.end()
+    //     // );
 
-        std::string log = "";
-        for (int i = 0; i < this->edges.size(); i++) log += std::to_string(i) + ": x1:" + std::to_string(this->edges[i]->x1) + ", y1:" + std::to_string(this->edges[i]->y1) + ", x2:" + std::to_string(this->edges[i]->x2) + ", y2:" + std::to_string(this->edges[i]->y2) + "\n";
-
-
-
-        std::deque<Edge*> newEdges;
-
-        int firstEdgeIndex = getFirstEdgeIndex();
-        newEdges.push_back(this->edges[firstEdgeIndex]);
-        edges.erase(this->edges.begin() + firstEdgeIndex);
-
-        log += "start:" + std::to_string(firstEdgeIndex) + "\n";
+    //     std::string log = "";
+    //     for (int i = 0; i < this->edges.size(); i++) log += std::to_string(i) + ": x1:" + std::to_string(this->edges[i]->x1) + ", y1:" + std::to_string(this->edges[i]->y1) + ", x2:" + std::to_string(this->edges[i]->x2) + ", y2:" + std::to_string(this->edges[i]->y2) + "\n";
 
 
 
-        int index, count = 1000;
-        while (this->edges.size() > 0 && count > 0) {
-            Edge* lastEdge = newEdges.back();
+    //     std::deque<Edge*> newEdges;
 
-            index = -1;
-            for (size_t i = 0; i < this->edges.size(); i++) {
-                if (std::abs(lastEdge->x2 - this->edges[i]->x1) < 1e-10 && std::abs(lastEdge->y2 - this->edges[i]->y1) < 1e-10) {
-                    index = i;
-                    break;
-                }
-            }
-            if (index == -1) break; // no matching edge found
+    //     int firstEdgeIndex = getFirstEdgeIndex();
+    //     newEdges.push_back(this->edges[firstEdgeIndex]);
+    //     edges.erase(this->edges.begin() + firstEdgeIndex);
 
-            newEdges.push_back(this->edges[index]);
-            this->edges.erase(this->edges.begin() + index);
+    //     log += "start:" + std::to_string(firstEdgeIndex) + "\n";
 
-            count--;
-        }
-        if (count == 0) std::cout << "while count reached 1000" << std::endl;
 
-        // count = 1000;
-        // while (this->edges.size() > 0 && count > 0) {
-        //     Edge* first = newEdges.front();
 
-        //     index = -1;
-        //     for (size_t i = 0; i < this->edges.size(); i++) {
-        //         if (std::abs(first->x1 - this->edges[i]->x2) < 1e-10 && std::abs(first->y1 - this->edges[i]->y2) < 1e-10) {
-        //             index = i;
-        //             break;
-        //         }
-        //     }
-        //     if (index == -1) break; // no matching edge found
+    //     int index, count = 1000;
+    //     while (this->edges.size() > 0 && count > 0) {
+    //         Edge* lastEdge = newEdges.back();
 
-        //     newEdges.push_front(this->edges[index]);
-        //     this->edges.erase(this->edges.begin() + index);
+    //         index = -1;
+    //         for (size_t i = 0; i < this->edges.size(); i++) {
+    //             if (std::abs(lastEdge->x2 - this->edges[i]->x1) < 1e-10 && std::abs(lastEdge->y2 - this->edges[i]->y1) < 1e-10) {
+    //                 index = i;
+    //                 break;
+    //             }
+    //         }
+    //         if (index == -1) break; // no matching edge found
 
-        //     count--;
-        // }
-        // if (count == 0) std::cout << "while count reached 1000" << std::endl;
+    //         newEdges.push_back(this->edges[index]);
+    //         this->edges.erase(this->edges.begin() + index);
 
-        if (this->edges.size() > 0) {
-            for (int i = 0; i < this->edges.size(); i++) log += "remains - x1:" + std::to_string(this->edges[i]->x1) + ", y1:" + std::to_string(this->edges[i]->y1) + ", x2:" + std::to_string(this->edges[i]->x2) + ", y2:" + std::to_string(this->edges[i]->y2) + "\n";
-            std::cout << "edges cannot be continous (remains:" << this->edges.size() << ")\n" << log << std::endl;
-        }
+    //         count--;
+    //     }
+    //     if (count == 0) std::cout << "while count reached 1000" << std::endl;
 
-        this->edges = std::move(newEdges);
-    }
+    //     // count = 1000;
+    //     // while (this->edges.size() > 0 && count > 0) {
+    //     //     Edge* first = newEdges.front();
 
-    int getFirstEdgeIndex()
-    {
-        for (size_t i = 0; i < edges.size(); i++) {
-            bool hasConnecting = false;
-            for (size_t j = 0; j < edges.size(); j++) {
-                if (i == j) continue;
-                if (std::abs(edges[j]->x2 - edges[i]->x1) < 1e-10 &&
-                    std::abs(edges[j]->y2 - edges[i]->y1) < 1e-10) {
-                    hasConnecting = true;
-                    break;
-                }
-            }
-            if (!hasConnecting) return i;
-        }
-        return 0;
-    }
+    //     //     index = -1;
+    //     //     for (size_t i = 0; i < this->edges.size(); i++) {
+    //     //         if (std::abs(first->x1 - this->edges[i]->x2) < 1e-10 && std::abs(first->y1 - this->edges[i]->y2) < 1e-10) {
+    //     //             index = i;
+    //     //             break;
+    //     //         }
+    //     //     }
+    //     //     if (index == -1) break; // no matching edge found
+
+    //     //     newEdges.push_front(this->edges[index]);
+    //     //     this->edges.erase(this->edges.begin() + index);
+
+    //     //     count--;
+    //     // }
+    //     // if (count == 0) std::cout << "while count reached 1000" << std::endl;
+
+    //     if (this->edges.size() > 0) {
+    //         for (int i = 0; i < this->edges.size(); i++) log += "remains - x1:" + std::to_string(this->edges[i]->x1) + ", y1:" + std::to_string(this->edges[i]->y1) + ", x2:" + std::to_string(this->edges[i]->x2) + ", y2:" + std::to_string(this->edges[i]->y2) + "\n";
+    //         std::cout << "edges cannot be continous (remains:" << this->edges.size() << ")\n" << log << std::endl;
+    //     }
+
+    //     this->edges = std::move(newEdges);
+    // }
+
+    // int getFirstEdgeIndex()
+    // {
+    //     for (size_t i = 0; i < edges.size(); i++) {
+    //         bool hasConnecting = false;
+    //         for (size_t j = 0; j < edges.size(); j++) {
+    //             if (i == j) continue;
+    //             if (std::abs(edges[j]->x2 - edges[i]->x1) < 1e-10 &&
+    //                 std::abs(edges[j]->y2 - edges[i]->y1) < 1e-10) {
+    //                 hasConnecting = true;
+    //                 break;
+    //             }
+    //         }
+    //         if (!hasConnecting) return i;
+    //     }
+    //     return 0;
+    // }
 
     inline double cross(double x1, double y1, double x2, double y2, double px, double py) { return (x2 - x1) * (py - y1) - (y2 - y1) * (px - x1); }
     // positive: p is left, zero: p is on line, negative: p is right

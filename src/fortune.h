@@ -12,28 +12,17 @@
 
 
 
-// struct Edge
-// {
-//     Point start, end;
-//     Edge(Point s, Point e) : start(s), end(e) {}
-//     virtual ~Edge() = default;
-// };
-
-// struct HalfEdge : Edge
-// {
-//     Point dir;
-//     HalfEdge* otherHalf = nullptr;
-//     HalfEdge(Point start, Point direction) : Edge{start, {0, 0}}, dir(direction) {}
-// };
-
 // struct Site
 // {
-//     Point point;
+//     double x, y;
 //     std::vector<Edge*> edges;
 
 //     void addEdge(HalfEdge* halfEdge)
 //     {
-//         edges.push_back(halfEdge);
+//         edges.push_back(new Edge(
+//             halfEdge->x, halfEdge->y,
+//             halfEdge->x + halfEdge->dir_x, halfEdge->y + halfEdge->dir_y
+//         ));
 //     }
 // };
 
@@ -45,11 +34,7 @@ struct Event
     EventType type;
     double x, y;
     void* ptr; // SITE: Site*, CIRCLE: Beachline*
-
-    bool operator < (const Event& other) const
-    {
-        return this->y < other.y || (this->y == other.y && this->x < other.x);
-    }
+    bool operator < (const Event& other) const { return this->y < other.y || (this->y == other.y && this->x < other.x); }
 };
 
 
@@ -83,12 +68,12 @@ class Fortune
             this->siteCount = points->size();
             this->sites = new Site[this->siteCount];
             for (size_t i = 0; i < this->siteCount; i++) {
-                sites[i] = Site((*points)[i].first, (*points)[i].second);
+                sites[i] = Site{(*points)[i].first, (*points)[i].second};
             }
 
             // fill up events initial values
             this->events.clear();
-            for (int i = 0; i < this->siteCount; i++) {
+            for (size_t i = 0; i < this->siteCount; i++) {
                 this->events.insert(Event{SITE, sites[i].x, sites[i].y, &sites[i]});
             }
 
@@ -112,15 +97,19 @@ class Fortune
             }
 
             finishingHalfEdges();
-            finishingSites();
-            cleanUp();
+            for (size_t i = 0; i < this->siteCount; i++) {
+                this->sites[i].halfEdgesToEdges();
+            }
+
+            // finishingSites();
+            // cleanUp();
         }
 
         void handle_siteEvent(Event* event)
         {
             Site* new_site = static_cast<Site*>(event->ptr);
 
-            int parabola_below_index = getParabolaIndexBelow(new_site);
+            size_t parabola_below_index = getParabolaIndexBelow(new_site);
             Site* parabola_below = static_cast<Site*>(this->beachline[parabola_below_index]->ptr);
 
             checkCircleEvent_remove(parabola_below_index);
@@ -151,8 +140,8 @@ class Fortune
 
         void handle_circleEvent(Event* event)
         {
-            int parabola_index = -1;
-            for (int i = 0; i < this->beachline.size(); i += 2) {
+            size_t parabola_index = -1;
+            for (size_t i = 0; i < this->beachline.size(); i += 2) {
                 if (event->ptr == this->beachline[i].get()) {
                     parabola_index = i;
                     break;
@@ -213,7 +202,7 @@ class Fortune
 
         int getParabolaIndexBelow(Site* site)
         {
-            for (int i = 0; i < this->beachline.size() - 1; i += 2) {
+            for (size_t i = 0; i < this->beachline.size() - 1; i += 2) {
                 Site* parabola = static_cast<Site*>(this->beachline[i]->ptr);
                 Site* parabola_next = static_cast<Site*>(this->beachline[i + 2]->ptr);
                 double intersect_x = getParabolaIntersectX(
@@ -383,7 +372,7 @@ class Fortune
 
         void finishingHalfEdges()
         {
-            for (int i = 0; i < this->beachline.size(); i++) {
+            for (size_t i = 0; i < this->beachline.size(); i++) {
                 if (this->beachline[i]->type != HALF_EDGE) continue;
 
                 Site* site_left = static_cast<Site*>(this->beachline[i - 1]->ptr);
@@ -407,20 +396,20 @@ class Fortune
             }
         }
 
-        void finishingSites()
-        {
-            for (int i = 0; i < this->siteCount; i++) {
-                this->sites[i].updateEdges();
-            }
-        }
+        // void finishingSites()
+        // {
+        //     for (int i = 0; i < this->siteCount; i++) {
+        //         this->sites[i].updateEdges();
+        //     }
+        // }
 
-        void cleanUp()
-        {
-            for (HalfEdge* edge : this->halfEdges) {
-                delete edge;
-            }
-            this->halfEdges.clear();
-            this->beachline.clear();
-            this->events.clear();
-        }
+        // void cleanUp()
+        // {
+        //     for (HalfEdge* edge : this->halfEdges) {
+        //         delete edge;
+        //     }
+        //     this->halfEdges.clear();
+        //     this->beachline.clear();
+        //     this->events.clear();
+        // }
 };
