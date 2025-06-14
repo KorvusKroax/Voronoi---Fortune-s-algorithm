@@ -2,23 +2,8 @@
 
 #include <cmath>
 
-// EGA colors
-#define EGA_BLACK           Color(0x00, 0x00, 0x00)
-#define EGA_BLUE            Color(0x00, 0x00, 0xA8)
-#define EGA_GREEN           Color(0x00, 0xA8, 0x00)
-#define EGA_CYAN            Color(0x00, 0xA8, 0xA8)
-#define EGA_RED             Color(0xA8, 0x00, 0x00)
-#define EGA_MAGENTA         Color(0xA8, 0x00, 0xA8)
-#define EGA_ORANGE          Color(0xA8, 0x54, 0x00)
-#define EGA_GREY            Color(0xA8, 0xA8, 0xA8)
-#define EGA_DARK_GREY       Color(0x54, 0x54, 0x54)
-#define EGA_LIGHT_BLUE      Color(0x54, 0x54, 0xFE)
-#define EGA_LIGHT_GREEN     Color(0x54, 0xFE, 0x54)
-#define EGA_LIGHT_CYAN      Color(0x54, 0xFE, 0xFE)
-#define EGA_BRIGHT_RED      Color(0xFE, 0x54, 0x54)
-#define EGA_BRIGHT_MAGENTA  Color(0xFE, 0x54, 0xFE)
-#define EGA_YELLOW          Color(0xFE, 0xFE, 0x54)
-#define EGA_WHITE           Color(0xFE, 0xFE, 0xFE)
+#include "palette_ega.h"
+#include "palette_c64.h"
 
 struct Color {
     unsigned int value;
