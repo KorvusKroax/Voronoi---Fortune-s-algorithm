@@ -6,25 +6,10 @@
 #include <cmath> // for std::sqrt
 #include <memory> // for std::unique_ptr
 #include <iostream> // for std::cout and std::endl
+#include <variant> // for std::holds_alternative
 
 #include "edge.h"
 #include "site.h"
-
-
-
-// struct Site
-// {
-//     double x, y;
-//     std::vector<Edge*> edges;
-
-//     void addEdge(HalfEdge* halfEdge)
-//     {
-//         edges.push_back(new Edge(
-//             halfEdge->x, halfEdge->y,
-//             halfEdge->x + halfEdge->dir_x, halfEdge->y + halfEdge->dir_y
-//         ));
-//     }
-// };
 
 
 
@@ -39,15 +24,6 @@ struct Event
 
 
 
-enum BeachlineType { PARABOLA, HALF_EDGE };
-struct Beachline
-{
-    BeachlineType type;
-    void* ptr; // PARABOLA: Site*, HALF_EDGE: HalfEdge*
-};
-
-
-
 class Fortune
 {
     public:
@@ -56,7 +32,7 @@ class Fortune
         Site* sites;
 
         std::set<Event> events;
-        std::vector<std::unique_ptr<Beachline>> beachline;
+        std::vector<std::unique_ptr<std::variant<Site*, HalfEdge*>>> beachline;
         std::vector<HalfEdge*> halfEdges;
 
         Fortune(double width, double height, std::vector<std::pair<double, double>>* points)
@@ -80,29 +56,31 @@ class Fortune
             // make first event as initial beachline
             this->beachline.clear();
             Site* firstSite = static_cast<Site*>(events.begin()->ptr);
-            this->beachline.push_back(std::make_unique<Beachline>(Beachline{PARABOLA, firstSite}));
+            this->beachline.push_back(std::make_unique<std::variant<Site*, HalfEdge*>>(firstSite));
             this->events.erase(this->events.begin());
 
-            // processing events
+            // processing other events
             while (!this->events.empty()) {
                 Event event = *this->events.begin();
-
                 if (event.type == SITE) {
                     handle_siteEvent(&event);
                 } else if (event.type == CIRCLE) {
                     handle_circleEvent(&event);
                 }
-
                 this->events.erase(this->events.begin());
             }
 
             finishingHalfEdges();
+
             for (size_t i = 0; i < this->siteCount; i++) {
                 this->sites[i].halfEdgesToEdges();
             }
 
-            // finishingSites();
-            // cleanUp();
+            // free up memory
+            for (HalfEdge* edge : this->halfEdges) delete edge;
+            this->halfEdges.clear();
+            this->beachline.clear();
+            this->events.clear();
         }
 
         void handle_siteEvent(Event* event)
@@ -110,13 +88,11 @@ class Fortune
             Site* new_site = static_cast<Site*>(event->ptr);
 
             size_t parabola_below_index = getParabolaIndexBelow(new_site);
-            Site* parabola_below = static_cast<Site*>(this->beachline[parabola_below_index]->ptr);
+            Site* parabola_below = std::get<Site*>(*this->beachline[parabola_below_index]);
 
             checkCircleEvent_remove(parabola_below_index);
 
-            this->beachline.insert(this->beachline.begin() + parabola_below_index,
-                std::make_unique<Beachline>(Beachline{PARABOLA, parabola_below})
-            );
+            this->beachline.emplace(this->beachline.begin() + parabola_below_index, std::make_unique<std::variant<Site*, HalfEdge*>>(parabola_below));
 
             double dx = parabola_below->x - new_site->x;
             double dy = parabola_below->y - new_site->y;
@@ -130,9 +106,9 @@ class Fortune
             this->halfEdges.push_back(edge_left);
             this->halfEdges.push_back(edge_right);
 
-            this->beachline.insert(this->beachline.begin() + parabola_below_index + 1, std::make_unique<Beachline>(Beachline{HALF_EDGE, edge_left}));
-            this->beachline.insert(this->beachline.begin() + parabola_below_index + 2, std::make_unique<Beachline>(Beachline{PARABOLA, new_site}));
-            this->beachline.insert(this->beachline.begin() + parabola_below_index + 3, std::make_unique<Beachline>(Beachline{HALF_EDGE, edge_right}));
+            this->beachline.emplace(this->beachline.begin() + parabola_below_index + 1, std::make_unique<std::variant<Site*, HalfEdge*>>(edge_left));
+            this->beachline.emplace(this->beachline.begin() + parabola_below_index + 2, std::make_unique<std::variant<Site*, HalfEdge*>>(new_site));
+            this->beachline.emplace(this->beachline.begin() + parabola_below_index + 3, std::make_unique<std::variant<Site*, HalfEdge*>>(edge_right));
 
             checkCircleEvent_add(parabola_below_index);
             checkCircleEvent_add(parabola_below_index + 4);
@@ -156,12 +132,12 @@ class Fortune
             checkCircleEvent_remove(parabola_index - 2);
             checkCircleEvent_remove(parabola_index + 2);
 
-            Site* parabola_left = static_cast<Site*>(this->beachline[parabola_index - 2]->ptr);
-            Site* parabola = static_cast<Site*>(this->beachline[parabola_index]->ptr);
-            Site* parabola_right = static_cast<Site*>(this->beachline[parabola_index + 2]->ptr);
+            Site* parabola_left = std::get<Site*>(*this->beachline[parabola_index - 2]);
+            Site* parabola = std::get<Site*>(*this->beachline[parabola_index]);
+            Site* parabola_right = std::get<Site*>(*this->beachline[parabola_index + 2]);
 
-            HalfEdge* edge_left = static_cast<HalfEdge*>(this->beachline[parabola_index - 1]->ptr);
-            HalfEdge* edge_right = static_cast<HalfEdge*>(this->beachline[parabola_index + 1]->ptr);
+            HalfEdge* edge_left = std::get<HalfEdge*>(*this->beachline[parabola_index - 1]);
+            HalfEdge* edge_right = std::get<HalfEdge*>(*this->beachline[parabola_index + 1]);
 
             double ix, iy, r;
             if (!checkCircle_edge(parabola_index, &ix, &iy, &r)) {
@@ -190,9 +166,7 @@ class Fortune
 
             this->halfEdges.push_back(new_edge);
 
-            this->beachline.insert(this->beachline.begin() + parabola_index,
-                std::make_unique<Beachline>(Beachline{HALF_EDGE, new_edge})
-            );
+            this->beachline.emplace(this->beachline.begin() + parabola_index, std::make_unique<std::variant<Site*, HalfEdge*>>(new_edge));
 
             checkCircleEvent_add(parabola_index - 1);
             checkCircleEvent_add(parabola_index + 1);
@@ -203,8 +177,8 @@ class Fortune
         int getParabolaIndexBelow(Site* site)
         {
             for (size_t i = 0; i < this->beachline.size() - 1; i += 2) {
-                Site* parabola = static_cast<Site*>(this->beachline[i]->ptr);
-                Site* parabola_next = static_cast<Site*>(this->beachline[i + 2]->ptr);
+                Site* parabola = std::get<Site*>(*this->beachline[i]);
+                Site* parabola_next = std::get<Site*>(*this->beachline[i + 2]);
                 double intersect_x = getParabolaIntersectX(
                     parabola->x, parabola->y,
                     parabola_next->x, parabola_next->y,
@@ -241,7 +215,7 @@ class Fortune
 
         void checkCircleEvent_remove(int parabola_index)
         {
-            Beachline* ptr = this->beachline[parabola_index].get();
+            std::variant<Site*, HalfEdge*>* ptr = this->beachline[parabola_index].get();
             std::set<Event>::iterator it = std::find_if(this->events.begin(), this->events.end(),
                 [ptr](const Event& event) {return event.type == CIRCLE && event.ptr == ptr;}
             );
@@ -252,7 +226,7 @@ class Fortune
         void checkCircleEvent_add(int parabola_index)
         {
             if (parabola_index - 2 < 0 || parabola_index + 2 > this->beachline.size() - 1 ||
-                this->beachline[parabola_index - 2]->ptr == this->beachline[parabola_index + 2]->ptr) return;
+                *this->beachline[parabola_index - 2] == *this->beachline[parabola_index + 2]) return;
 
             double ix, iy, r;
             if (!checkCircle_edge(parabola_index, &ix, &iy, &r)) return;
@@ -265,9 +239,9 @@ class Fortune
 
         bool checkCircle_edge(int parabola_index, double* ix, double* iy, double* r)
         {
-            HalfEdge* edge_left = static_cast<HalfEdge*>(this->beachline[parabola_index - 1]->ptr);
-            Site* parabola = static_cast<Site*>(this->beachline[parabola_index]->ptr);
-            HalfEdge* edge_right = static_cast<HalfEdge*>(this->beachline[parabola_index + 1]->ptr);
+            HalfEdge* edge_left = std::get<HalfEdge*>(*this->beachline[parabola_index - 1]);
+            Site* parabola = std::get<Site*>(*this->beachline[parabola_index]);
+            HalfEdge* edge_right = std::get<HalfEdge*>(*this->beachline[parabola_index + 1]);
 
             if (!intersection_ray(
                     edge_left->x, edge_left->y, edge_left->dir_x, edge_left->dir_y,
@@ -373,11 +347,11 @@ class Fortune
         void finishingHalfEdges()
         {
             for (size_t i = 0; i < this->beachline.size(); i++) {
-                if (this->beachline[i]->type != HALF_EDGE) continue;
+                if (!std::holds_alternative<HalfEdge*>(*this->beachline[i])) continue;
 
-                Site* site_left = static_cast<Site*>(this->beachline[i - 1]->ptr);
-                HalfEdge* halfEdge = static_cast<HalfEdge*>(this->beachline[i]->ptr);
-                Site* site_right = static_cast<Site*>(this->beachline[i + 1]->ptr);
+                Site* site_left = std::get<Site*>(*this->beachline[i - 1]);
+                HalfEdge* halfEdge = std::get<HalfEdge*>(*this->beachline[i]);
+                Site* site_right = std::get<Site*>(*this->beachline[i + 1]);
 
                 if ((halfEdge->x < 0 && halfEdge->x + halfEdge->dir_x < 0) ||
                     (halfEdge->y < 0 && halfEdge->y + halfEdge->dir_y < 0) ||
@@ -395,21 +369,4 @@ class Fortune
                 site_right->addEdge(halfEdge);
             }
         }
-
-        // void finishingSites()
-        // {
-        //     for (int i = 0; i < this->siteCount; i++) {
-        //         this->sites[i].updateEdges();
-        //     }
-        // }
-
-        // void cleanUp()
-        // {
-        //     for (HalfEdge* edge : this->halfEdges) {
-        //         delete edge;
-        //     }
-        //     this->halfEdges.clear();
-        //     this->beachline.clear();
-        //     this->events.clear();
-        // }
 };
