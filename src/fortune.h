@@ -122,8 +122,6 @@ struct Fortune
             }
         }
 
-
-
         if (parabola_index < 0 || parabola_index > this->beachline.size() - 1) {
             std::cerr << "Error: parabola not found in handle_circleEvent() (" << parabola_index << ")" << std::endl;
             exit(EXIT_FAILURE);
@@ -218,7 +216,7 @@ struct Fortune
         Beachline* parabola_ptr = this->beachline[parabola_index].get();
 
         std::set<Event>::iterator it = std::find_if(this->events.begin(), this->events.end(),
-            [parabola_ptr](const Event& event) {return event.type == CIRCLE && event.ptr == parabola_ptr;}
+            [parabola_ptr](const Event& event) { return event.type == CIRCLE && event.ptr == parabola_ptr; }
         );
 
         if (it != this->events.end()) this->events.erase(it);
@@ -359,6 +357,7 @@ struct Fortune
                 (halfEdge->x >= this->width && halfEdge->x + halfEdge->dir_x >= this->width) ||
                 (halfEdge->y >= this->height && halfEdge->y + halfEdge->dir_y >= this->height)
             ) continue;
+            // ...maybe it is not needed to check the end point
 
             double end_x, end_y;
             clipRay(halfEdge->x, halfEdge->y, halfEdge->dir_x, halfEdge->dir_y, &end_x, &end_y);
