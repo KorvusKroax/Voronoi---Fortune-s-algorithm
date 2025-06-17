@@ -1,7 +1,6 @@
 #pragma once
 
 #include <vector>
-// #include <deque>
 #include <iostream>
 #include <string>
 
@@ -12,11 +11,7 @@ struct Site
     double x, y;
     std::vector<Edge*> edges;
 
-    // Site() : x(0), y(0) { }
-
-    // Site(double x, double y) : x(x), y(y) { }
-
-    void addEdge(HalfEdge* halfEdge)
+    void addEdge(HalfEdge* halfEdge, bool isBorderCuttedEdge = false, double min_x = 0, double min_y = 0, double max_x = 0, double max_y = 0)
     {
         int otherIndex = -1;
         for (int i = 0; i < this->edges.size(); i++) {
@@ -44,13 +39,17 @@ struct Site
                 new Edge(x1, y1, x2, y2) :
                 new Edge(x2, y2, x1, y1)
         );
-    }
 
-    // void updateEdges()
-    // {
-    //     halfEdgesToEdges();
-    //     // arrangeEdgesToContinuousPath();
-    // }
+
+
+        if (!isBorderCuttedEdge) return;
+
+        if (x1 == min_x || x1 == max_x || y1 == min_y || y1 == max_y) {
+            // it is a starting edge
+            // it must be signed somehow to start the edge arranging with this
+            // ...
+        }
+    }
 
     void halfEdgesToEdges()
     {
@@ -74,6 +73,11 @@ struct Site
 
         this->edges = std::move(newEdges);
     }
+
+    inline double cross(double x1, double y1, double x2, double y2, double px, double py) { return (x2 - x1) * (py - y1) - (y2 - y1) * (px - x1); }
+    // positive: p is left, zero: p is on line, negative: p is right
+
+
 
     // void arrangeEdgesToContinuousPath()
     // {
@@ -170,7 +174,4 @@ struct Site
     //     }
     //     return 0;
     // }
-
-    inline double cross(double x1, double y1, double x2, double y2, double px, double py) { return (x2 - x1) * (py - y1) - (y2 - y1) * (px - x1); }
-    // positive: p is left, zero: p is on line, negative: p is right
 };

@@ -14,13 +14,12 @@
 
 
 typedef std::variant<Site*, HalfEdge*> Beachline;
+typedef std::variant<Site*, Beachline*> EventSubject;
 
-enum EventType { SITE, CIRCLE };
 struct Event
 {
-    EventType type;
     double x, y;
-    void* ptr; // SITE: Site*, CIRCLE: Beachline*
+    EventSubject ptr;
     bool operator < (const Event& other) const { return this->y < other.y || (this->y == other.y && this->x < other.x); }
 };
 
@@ -51,21 +50,21 @@ struct Fortune
         // fill up events initial values
         this->events.clear();
         for (size_t i = 0; i < this->siteCount; i++) {
-            this->events.insert(Event{SITE, this->sites[i].x, this->sites[i].y, &this->sites[i]});
+            this->events.insert(Event{this->sites[i].x, this->sites[i].y, EventSubject(&this->sites[i])});
         }
 
         // make first event as initial beachline
         this->beachline.clear();
-        Site* firstSite = static_cast<Site*>(this->events.begin()->ptr);
+        Site* firstSite = std::get<Site*>(this->events.begin()->ptr);
         this->beachline.push_back(std::make_unique<Beachline>(firstSite));
         this->events.erase(this->events.begin());
 
         // processing other events
         while (!this->events.empty()) {
             Event event = *this->events.begin();
-            if (event.type == SITE) {
+            if (std::holds_alternative<Site*>(event.ptr)) {
                 handle_siteEvent(&event);
-            } else if (event.type == CIRCLE) {
+            } else {
                 handle_circleEvent(&event);
             }
             this->events.erase(this->events.begin());
@@ -82,7 +81,7 @@ struct Fortune
 
     void handle_siteEvent(Event* event)
     {
-        Site* new_site = static_cast<Site*>(event->ptr);
+        Site* new_site = std::get<Site*>(event->ptr);
 
         size_t parabola_below_index = getParabolaIndexBelow(new_site);
         Site* parabola_below = std::get<Site*>(*this->beachline[parabola_below_index]);
@@ -116,7 +115,7 @@ struct Fortune
         // get the event's parabola's index on the beachline
         size_t parabola_index = -1;
         for (size_t i = 0; i < this->beachline.size(); i += 2) {
-            if (event->ptr == this->beachline[i].get()) {
+            if (std::get<Beachline*>(event->ptr) == this->beachline[i].get()) {
                 parabola_index = i;
                 break;
             }
@@ -216,7 +215,9 @@ struct Fortune
         Beachline* parabola_ptr = this->beachline[parabola_index].get();
 
         std::set<Event>::iterator it = std::find_if(this->events.begin(), this->events.end(),
-            [parabola_ptr](const Event& event) { return event.type == CIRCLE && event.ptr == parabola_ptr; }
+            [parabola_ptr](const Event& event) {
+                return std::holds_alternative<Beachline*>(event.ptr) && std::get<Beachline*>(event.ptr) == parabola_ptr;
+            }
         );
 
         if (it != this->events.end()) this->events.erase(it);
@@ -231,7 +232,7 @@ struct Fortune
         if (!checkCircle_edge(parabola_index, &ix, &iy, &r)) return;
 
         // inserting new event into its sorted place
-        this->events.insert(Event{CIRCLE, ix, iy + r, this->beachline[parabola_index].get()});
+        this->events.insert(Event{ix, iy + r, this->beachline[parabola_index].get()});
     }
 
 
@@ -365,8 +366,8 @@ struct Fortune
             halfEdge->dir_x = end_x - halfEdge->x;
             halfEdge->dir_y = end_y - halfEdge->y;
 
-            site_left->addEdge(halfEdge);
-            site_right->addEdge(halfEdge);
+            site_left->addEdge(halfEdge, true, 0, 0, this->width, this->height);
+            site_right->addEdge(halfEdge, true, 0, 0, this->width, this->height);
         }
 
         // change remains half edges to edges
