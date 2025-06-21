@@ -23,8 +23,10 @@ OpenGL openGL = OpenGL(&canvas, PIXEL_SIZE, WINDOWED_RESIZABLE);
 Mouse mouse = Mouse(&openGL, 1, MOUSE_CURSOR_ENABLED);
 
 Fortune* fortune = new Fortune();
-int siteCount = 10;
+int siteCount = 15;
+
 int siteIndex = 0;
+int edgeIndex = 0;
 
 
 
@@ -58,11 +60,27 @@ void showSite(Site* site, Color color)
 {
     Circle::draw_filled(&canvas, site->x, site->y, 1, EGA_BRIGHT_RED);
 
-    for (int j = 0; j < site->edges.size(); j++) {
-        int x1 = site->edges[j]->x1;
-        int y1 = site->edges[j]->y1;
-        int x2 = site->edges[j]->x2;
-        int y2 = site->edges[j]->y2;
+    for (int i = 0; i < site->path.size(); i++) {
+        int x1 = site->path[i]->x1;
+        int y1 = site->path[i]->y1;
+        int x2 = site->path[i]->x2;
+        int y2 = site->path[i]->y2;
+
+        Line::draw(&canvas, x1, y1, x2, y2, color);
+        // Circle::draw_filled(&canvas, x1, y1, 2, EGA_GREEN);
+        // Circle::draw(&canvas, x2, y2, 4, EGA_RED);
+    }
+}
+
+void showSitePartial(Site* site, Color color)
+{
+    Circle::draw_filled(&canvas, site->x, site->y, 1, EGA_BRIGHT_RED);
+
+    for (int i = 0; i <= edgeIndex % site->path.size(); i++) {
+        int x1 = site->path[i]->x1;
+        int y1 = site->path[i]->y1;
+        int x2 = site->path[i]->x2;
+        int y2 = site->path[i]->y2;
 
         Line::draw(&canvas, x1, y1, x2, y2, color);
         Circle::draw_filled(&canvas, x1, y1, 2, EGA_GREEN);
@@ -111,7 +129,8 @@ int main()
     glfwSetWindowPos(openGL.window, 100, 50);
     glfwSetKeyCallback(openGL.window, [](GLFWwindow* window, int key, int scancode, int action, int mod) {
         if (key == GLFW_KEY_ESCAPE) glfwSetWindowShouldClose(openGL.window, true);
-        if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) siteIndex = (siteIndex + 1) % siteCount;
+        if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) { siteIndex++; edgeIndex = 0; }
+        if (key == GLFW_KEY_ENTER && action == GLFW_PRESS) { edgeIndex++; }
         // if (key == GLFW_KEY_S && action == GLFW_PRESS) save("sites.map");
         // if (key == GLFW_KEY_L && action == GLFW_PRESS) load("sites.map");
     });
@@ -144,7 +163,7 @@ int main()
             Circle::draw(&canvas, sites[i].x, sites[i].y, 1, EGA_DARK_GREY);
             showSite(&sites[i], EGA_DARK_GREY);
         }
-        showSite(&sites[siteIndex], EGA_WHITE);
+        showSitePartial(&sites[siteIndex % siteCount], EGA_WHITE);
 
 
 

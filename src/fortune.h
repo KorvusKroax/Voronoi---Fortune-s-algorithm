@@ -71,6 +71,7 @@ struct Fortune
         // change remains half edges to edges
         for (size_t i = 0; i < siteCount; i++) {
             sites[i].halfEdgesToEdges();
+            sites[i].arrangeEdgesToContinuousPath(min_x, min_y, max_x, max_y);
         }
 
         // free up memory
@@ -369,8 +370,8 @@ struct Fortune
             halfEdge->dir_x = end_x - halfEdge->x;
             halfEdge->dir_y = end_y - halfEdge->y;
 
-            site_left->addEdge(halfEdge, true, min_x, min_y, max_x, max_y);
-            site_right->addEdge(halfEdge, true, min_x, min_y, max_x, max_y);
+            site_left->addEdge(halfEdge);
+            site_right->addEdge(halfEdge);
         }
     }
 };

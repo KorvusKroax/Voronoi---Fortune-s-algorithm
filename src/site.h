@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <deque>
 #include <iostream>
 #include <string>
 
@@ -10,8 +11,9 @@ struct Site
 {
     double x, y;
     std::vector<Edge*> edges;
+    std::vector<Edge*> path;
 
-    void addEdge(HalfEdge* halfEdge, bool isBorderCuttedEdge = false, double min_x = 0, double min_y = 0, double max_x = 0, double max_y = 0)
+    void addEdge(HalfEdge* halfEdge)
     {
         int otherIndex = -1;
         for (int i = 0; i < this->edges.size(); i++) {
@@ -39,16 +41,6 @@ struct Site
                 new Edge(x1, y1, x2, y2) :
                 new Edge(x2, y2, x1, y1)
         );
-
-
-
-        if (!isBorderCuttedEdge) return;
-
-        if (x1 == min_x || x1 == max_x || y1 == min_y || y1 == max_y) {
-            // it is a starting edge
-            // it must be signed somehow to start the edge arranging with this
-            // ...
-        }
     }
 
     void halfEdgesToEdges()
@@ -76,6 +68,66 @@ struct Site
 
     inline double cross(double x1, double y1, double x2, double y2, double px, double py) { return (x2 - x1) * (py - y1) - (y2 - y1) * (px - x1); }
     // positive: p is left, zero: p is on line, negative: p is right
+
+    void arrangeEdgesToContinuousPath(double min_x, double min_y, double max_x, double max_y)
+    {
+        std::cout << "this->edges:" << std::endl;
+        for (size_t i = 0; i < this->edges.size(); i++)
+            std::cout << "  " << i << ": x" << this->edges[i]->x1 << ", y" << this->edges[i]->y1 << " - x" << this->edges[i]->x2 << ", y" << this->edges[i]->y2 << std::endl;
+
+
+
+        int firstEdgeIndex = -1;
+        for (size_t i = 0; i < this->edges.size(); i++) {
+            if (this->edges[i]->x1 == min_x || this->edges[i]->x1 == max_x || this->edges[i]->y1 == min_y || this->edges[i]->y1 == max_y) {
+                firstEdgeIndex = i;
+                break;
+            }
+        }
+        std::cout << "first: " << firstEdgeIndex << std::endl;
+
+        firstEdgeIndex = firstEdgeIndex == -1 ? 0 : firstEdgeIndex;
+
+        this->path.clear();
+        this->path.push_back(this->edges[firstEdgeIndex]);
+        this->edges.erase(this->edges.begin() + firstEdgeIndex);
+
+        size_t count = 1000;
+        while (this->edges.size() > 0 && count > 0) {
+            size_t nextEdgeIndex = getNextEdgeIndex(this->path.back());
+            if (nextEdgeIndex == -1) {
+                std::cout << "next == -1" << std::endl;
+                break;
+            }
+            this->path.push_back(this->edges[nextEdgeIndex]);
+            this->edges.erase(this->edges.begin() + nextEdgeIndex);
+            count--;
+        }
+        if (count <= 0) std::cout << "max COUNT reached" << std::endl;
+
+
+
+        std::cout << "this->edges:" << std::endl;
+        for (size_t i = 0; i < this->edges.size(); i++)
+            std::cout << "  " << i << ": x" << this->edges[i]->x1 << ", y" << this->edges[i]->y1 << " - x" << this->edges[i]->x2 << ", y" << this->edges[i]->y2 << std::endl;
+        std::cout << "this->path:" << std::endl;
+        for (size_t i = 0; i < this->path.size(); i++)
+            std::cout << "  " << i << ": x" << this->path[i]->x1 << ", y" << this->path[i]->y1 << " - x" << this->path[i]->x2 << ", y" << this->path[i]->y2 << std::endl;
+        std::cout << std::endl;
+    }
+
+    size_t getNextEdgeIndex(Edge* currEdge)
+    {
+        for (size_t i = 0; i < this->edges.size(); i++)
+            if (std::abs(currEdge->x2 - this->edges[i]->x1) < 1e-10 &&
+                std::abs(currEdge->y2 - this->edges[i]->y1) < 1e-10)
+                    return i;
+
+        return -1;
+    }
+
+
+
 
 
 
