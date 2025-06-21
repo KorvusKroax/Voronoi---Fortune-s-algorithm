@@ -22,7 +22,7 @@ Canvas canvas = Canvas(WIDTH, HEIGHT);
 OpenGL openGL = OpenGL(&canvas, PIXEL_SIZE, WINDOWED_RESIZABLE);
 Mouse mouse = Mouse(&openGL, 1, MOUSE_CURSOR_ENABLED);
 
-Fortune* fortune;
+Fortune* fortune = new Fortune();
 int siteCount = 10;
 int siteIndex = 0;
 
@@ -121,7 +121,8 @@ int main()
 
     std::vector<std::pair<double, double>> points;
     createSites(seed, &points);
-    fortune = new Fortune(WIDTH, HEIGHT, &points);
+
+    Site* sites = fortune->create(0, 0, WIDTH - 1, HEIGHT - 1, &points);
 
     while (!glfwWindowShouldClose(openGL.window)) {
         canvas.clearCanvas();
@@ -140,10 +141,10 @@ int main()
 
 
         for (int i = 0; i < siteCount; i++) {
-            Circle::draw(&canvas, fortune->sites[i].x, fortune->sites[i].y, 1, EGA_DARK_GREY);
-            showSite(&fortune->sites[i], EGA_DARK_GREY);
+            Circle::draw(&canvas, sites[i].x, sites[i].y, 1, EGA_DARK_GREY);
+            showSite(&sites[i], EGA_DARK_GREY);
         }
-        showSite(&fortune->sites[siteIndex], EGA_WHITE);
+        showSite(&sites[siteIndex], EGA_WHITE);
 
 
 

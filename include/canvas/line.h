@@ -144,7 +144,7 @@ struct Line
         float tMin = INFINITY;
 
         if (dir_x != 0) {
-            float x = (dir_x < 0 ? min_x : max_x);
+            float x = (dir_x < min_x ? min_x : max_x);
             float t = (x - x1) / dir_x;
             if (t > 0) {
                 float y = y1 + t * dir_y;
@@ -157,7 +157,7 @@ struct Line
         }
 
         if (dir_y != 0) {
-            float y = (dir_y < 0 ? min_y : max_y);
+            float y = (dir_y < min_y ? min_y : max_y);
             float t = (y - y1) / dir_y;
             if (t > 0 && t < tMin) {
                 float x = x1 + t * dir_x;

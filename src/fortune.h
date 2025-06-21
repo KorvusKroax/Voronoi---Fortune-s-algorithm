@@ -27,30 +27,26 @@ struct Event
 
 struct Fortune
 {
-    double width, height;
-    size_t siteCount;
-    Site* sites;
-
     std::set<Event> events;
     std::vector<std::unique_ptr<Beachline>> beachline;
     std::vector<HalfEdge*> halfEdges;
 
-    Fortune(double width, double height, std::vector<std::pair<double, double>>* points)
+    Fortune() { }
+
+    Site* create(double min_x, double min_y, double max_x, double max_y, std::vector<std::pair<double, double>>* points)
     {
-        this->width = width;
-        this->height = height;
+        size_t siteCount = points->size();
+        Site* sites = new Site[siteCount];
 
         // fill up sites with points
-        this->siteCount = points->size();
-        this->sites = new Site[this->siteCount];
-        for (size_t i = 0; i < this->siteCount; i++) {
+        for (size_t i = 0; i < siteCount; i++) {
             sites[i] = Site{(*points)[i].first, (*points)[i].second};
         }
 
         // fill up events initial values
         this->events.clear();
-        for (size_t i = 0; i < this->siteCount; i++) {
-            this->events.insert(Event{this->sites[i].x, this->sites[i].y, EventSubject(&this->sites[i])});
+        for (size_t i = 0; i < siteCount; i++) {
+            this->events.insert(Event{sites[i].x, sites[i].y, EventSubject(&sites[i])});
         }
 
         // make first event as initial beachline
@@ -65,18 +61,25 @@ struct Fortune
             if (std::holds_alternative<Site*>(event.ptr)) {
                 handle_siteEvent(&event);
             } else {
-                handle_circleEvent(&event);
+                handle_circleEvent(&event, min_x, min_y, max_x, max_y);
             }
             this->events.erase(this->events.begin());
         }
 
-        finishingHalfEdges();
+        finishingHalfEdges(min_x, min_y, max_x, max_y);
+
+        // change remains half edges to edges
+        for (size_t i = 0; i < siteCount; i++) {
+            sites[i].halfEdgesToEdges();
+        }
 
         // free up memory
         for (HalfEdge* edge : this->halfEdges) delete edge;
         this->halfEdges.clear();
         this->beachline.clear();
         this->events.clear();
+
+        return sites;
     }
 
     void handle_siteEvent(Event* event)
@@ -110,7 +113,7 @@ struct Fortune
         checkCircleEvent_add(parabola_below_index + 4);
     }
 
-    void handle_circleEvent(Event* event)
+    void handle_circleEvent(Event* event, double min_x, double min_y, double max_x, double max_y)
     {
         // get the event's parabola's index on the beachline
         size_t parabola_index = -1;
@@ -142,12 +145,12 @@ struct Fortune
             exit(EXIT_FAILURE);
         }
 
-        if (clipHalfEdge(edge_left, ix, iy)) {
+        if (clipHalfEdge(edge_left, ix, iy, min_x, min_y, max_x, max_y)) {
             parabola_left->addEdge(edge_left);
             parabola->addEdge(edge_left);
         }
 
-        if (clipHalfEdge(edge_right, ix, iy)) {
+        if (clipHalfEdge(edge_right, ix, iy, min_x, min_y, max_x, max_y)) {
             parabola_right->addEdge(edge_right);
             parabola->addEdge(edge_right);
         }
@@ -282,24 +285,24 @@ struct Fortune
 
 
 
-    bool clipHalfEdge(HalfEdge* edge, double ix, double iy)
+    bool clipHalfEdge(HalfEdge* edge, double ix, double iy, double min_x, double min_y, double max_x, double max_y)
     {
-        if (edge->x >= 0 && edge->x < this->width && edge->y >= 0 && edge->y < this->height) {
+        if (edge->x >= min_x && edge->x <= max_x && edge->y >= min_y && edge->y <= max_y) {
             double clipped_x = ix;
             double clipped_y = iy;
-            if (ix < 0 || ix >= this->width || iy < 0 || iy >= this->height) {
-                clipRay(edge->x, edge->y, ix - edge->x, iy - edge->y, &clipped_x, &clipped_y);
+            if (ix < min_x || ix > max_x || iy < min_y || iy > max_y) {
+                clipRay(edge->x, edge->y, ix - edge->x, iy - edge->y, min_x, min_y, max_x, max_y, &clipped_x, &clipped_y);
             }
             edge->dir_x = clipped_x - edge->x;
             edge->dir_y = clipped_y - edge->y;
             return true;
         }
 
-        if (ix >= 0 && ix < this->width && iy >= 0 && iy < this->height) {
+        if (ix >= min_x && ix <= max_x && iy >= min_y && iy <= max_y) {
             double clipped_x = edge->x;
             double clipped_y = edge->y;
-            if (edge->x < 0 || edge->x >= this->width || edge->y < 0 || edge->y >= this->height) {
-                clipRay(ix, iy, edge->x - ix, edge->y - iy, &clipped_x, &clipped_y);
+            if (edge->x < min_x || edge->x > max_x || edge->y < min_y || edge->y > max_y) {
+                clipRay(ix, iy, edge->x - ix, edge->y - iy, min_x, min_y, max_x, max_y, &clipped_x, &clipped_y);
             }
             edge->x = ix;
             edge->y = iy;
@@ -311,16 +314,16 @@ struct Fortune
         return false;
     }
 
-    void clipRay(double x1, double y1, double dir_x, double dir_y, double* ix, double* iy)
+    void clipRay(double x1, double y1, double dir_x, double dir_y, double min_x, double min_y, double max_x, double max_y, double* ix, double* iy)
     {
         double tMin = INFINITY;
 
         if (dir_x != 0) {
-            double x = (dir_x < 0 ? 0 : this->width - 1);
+            double x = (dir_x < min_x ? min_x : max_x);
             double t = (x - x1) / dir_x;
             if (t > 0) {
                 double y = y1 + t * dir_y;
-                if (y >= 0 && y < this->height - 1) {
+                if (y >= min_y && y <= max_y) {
                     tMin = t;
                     *ix = x;
                     *iy = y;
@@ -329,11 +332,11 @@ struct Fortune
         }
 
         if (dir_y != 0) {
-            double y = (dir_y < 0 ? 0 : this->height - 1);
+            double y = (dir_y < min_y ? min_y : max_y);
             double t = (y - y1) / dir_y;
             if (t > 0 && t < tMin) {
                 double x = x1 + t * dir_x;
-                if (x >= 0 && x < this->width - 1) {
+                if (x >= min_x && x <= max_x) {
                     tMin = t;
                     *ix = x;
                     *iy = y;
@@ -344,7 +347,7 @@ struct Fortune
 
 
 
-    void finishingHalfEdges()
+    void finishingHalfEdges(double min_x, double min_y, double max_x, double max_y)
     {
         for (size_t i = 0; i < this->beachline.size(); i++) {
             if (!std::holds_alternative<HalfEdge*>(*this->beachline[i])) continue;
@@ -353,26 +356,21 @@ struct Fortune
             HalfEdge* halfEdge = std::get<HalfEdge*>(*this->beachline[i]);
             Site* site_right = std::get<Site*>(*this->beachline[i + 1]);
 
-            if ((halfEdge->x < 0 && halfEdge->x + halfEdge->dir_x < 0) ||
-                (halfEdge->y < 0 && halfEdge->y + halfEdge->dir_y < 0) ||
-                (halfEdge->x >= this->width && halfEdge->x + halfEdge->dir_x >= this->width) ||
-                (halfEdge->y >= this->height && halfEdge->y + halfEdge->dir_y >= this->height)
+            if ((halfEdge->x < min_x && halfEdge->x + halfEdge->dir_x < min_x) ||
+                (halfEdge->y < min_y && halfEdge->y + halfEdge->dir_y < min_y) ||
+                (halfEdge->x > max_x && halfEdge->x + halfEdge->dir_x > max_x) ||
+                (halfEdge->y > max_y && halfEdge->y + halfEdge->dir_y > max_y)
             ) continue;
             // ...maybe it is not needed to check the end point
 
             double end_x, end_y;
-            clipRay(halfEdge->x, halfEdge->y, halfEdge->dir_x, halfEdge->dir_y, &end_x, &end_y);
+            clipRay(halfEdge->x, halfEdge->y, halfEdge->dir_x, halfEdge->dir_y, min_x, min_y, max_x, max_y, &end_x, &end_y);
 
             halfEdge->dir_x = end_x - halfEdge->x;
             halfEdge->dir_y = end_y - halfEdge->y;
 
-            site_left->addEdge(halfEdge, true, 0, 0, this->width, this->height);
-            site_right->addEdge(halfEdge, true, 0, 0, this->width, this->height);
-        }
-
-        // change remains half edges to edges
-        for (size_t i = 0; i < this->siteCount; i++) {
-            this->sites[i].halfEdgesToEdges();
+            site_left->addEdge(halfEdge, true, min_x, min_y, max_x, max_y);
+            site_right->addEdge(halfEdge, true, min_x, min_y, max_x, max_y);
         }
     }
 };
